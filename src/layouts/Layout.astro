@@ -34,8 +34,35 @@ const { title } = Astro.props;
 	}
 	html {
 		font-family: system-ui, sans-serif;
-		background: #13151a;
+		background: white;
 	}
+
+	/* Custom scrollbar styling */
+	::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+
+	::-webkit-scrollbar-track {
+		background: #f1f1f1;
+		border-radius: 4px;
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: #d1d5db;
+		border-radius: 4px;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background: #9ca3af;
+	}
+
+	/* Firefox scrollbar styling */
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: #d1d5db #f1f1f1;
+	}
+
 	code {
 		font-family:
 			Menlo,

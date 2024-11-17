@@ -1,0 +1,42 @@
+.sceneBeat {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    border-radius: 4px;
+    min-height: 48px;
+    min-width: 90%;
+    padding: 2px;
+    border: 2px solid black;    
+}
+
+.inline-content {
+    flex-grow: 1;
+}
+
+.button {
+	max-width: 100px;
+	border-radius: 5px;
+	padding: 2px;
+}
+
+.bn-container {
+    border: none !important;
+    outline: none !important;
+    width: 100%;
+    min-height: 1024px;
+    margin-bottom: 250px;
+}
+
+.bn-editor {
+    border: none !important;
+    outline: none !important;
+    min-height: 80vh;
+    margin-right: 10px;
+}
+
+@media (min-width: 768px) {
+    .bn-container {
+        width: 80%;
+        margin-left: auto;
+    }
+}   
