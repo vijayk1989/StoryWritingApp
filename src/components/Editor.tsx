@@ -86,12 +86,8 @@ export default function App() {
         schema,
         initialContent: [
             {
-                type: 'sceneBeat',
-                content: 'Give me some random ancient history facts.',
-            },
-            {
                 type: 'paragraph',
-                content: "Press the '/' key to open the Slash Menu and add another",
+                content: "Start writing your story here...",
             },
             {
                 type: 'paragraph',

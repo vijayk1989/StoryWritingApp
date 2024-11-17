@@ -1,11 +1,16 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Card from '../components/Card.astro';
-import Editor from '../components/Editor.tsx';
+import Editor from '../components/Editor';
+import SideNav from '../components/SideNav';
 ---
 
-<Layout title="Welcome to Astro.">
-	<main class="min-h-screen w-full overflow-hidden">
-		<Editor client:only="react" />
-	</main>
+<Layout title="Writer">
+  <div class="flex min-h-screen">
+    <SideNav client:load />
+    <main class="flex-1 w-full lg:ml-[5%]">
+      <div class="w-[90%] sm:max-w-4xl mx-auto lg:py-8 sm:px-4">
+        <Editor client:only="react" />
+      </div>
+    </main>
+  </div>
 </Layout>

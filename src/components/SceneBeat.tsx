@@ -99,9 +99,9 @@ export const SceneBeat = (sendToBackend: (textData: string) => Promise<Response>
                 };
 
                 return (
-                    <div className="flex flex-col gap-2 p-4 rounded-lg bg-gradient-to-b from-gray-100 to-gray-200 shadow-sm my-2 min-w-[90%]">
+                    <div className="flex flex-col gap-2 p-4 rounded-lg bg-gradient-to-b from-gray-100 to-gray-200 shadow-sm my-2 min-w-[100%]">
                         <div
-                            className="w-full min-h-[24px] p-2 rounded bg-white/50 focus:bg-white focus:outline-none transition-colors duration-200"
+                            className="w-full min-h-[24px] flex-grow p-2 rounded bg-white/50 focus:bg-white focus:outline-none transition-colors duration-200"
                             ref={props.contentRef}
                             contentEditable
                         />
