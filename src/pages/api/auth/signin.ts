@@ -23,5 +23,5 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     return redirect(data.url);
   }
 
-  return redirect("/dashboard");
+  return redirect("/");
 };

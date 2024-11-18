@@ -5,13 +5,13 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   const authCode = url.searchParams.get("code");
 
   if (!authCode) {
-    return new Response("No code provided", { status: 400 });
+    return redirect("/signin");
   }
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
 
   if (error) {
-    return new Response(error.message, { status: 500 });
+    return redirect("/signin");
   }
 
   const { access_token, refresh_token } = data.session;
@@ -23,5 +23,9 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
     path: "/",
   });
 
-  return redirect("/dashboard");
+  // Redirect to the stored URL or home page
+  const redirectTo = cookies.get("redirect-to")?.value || "/";
+  cookies.delete("redirect-to", { path: "/" });
+  
+  return redirect(redirectTo);
 };

@@ -15,6 +15,7 @@ import {
 
 import { RiAlertFill } from 'react-icons/ri';
 import { SceneBeat } from './SceneBeat';
+import { useEffect } from 'react';
 
 const sendToBackend = async (textData: string) => {
     try {
@@ -80,7 +81,11 @@ const insertSceneBeat = (editor: typeof schema.BlockNoteEditor) => ({
     key: 'sceneBeat',
 });
 
-export default function App() {
+interface EditorProps {
+    storyId?: string;
+}
+
+const Editor = ({ storyId }: EditorProps) => {
     // Creates a new editor instance.
     const editor = useCreateBlockNote({
         schema,
@@ -94,6 +99,17 @@ export default function App() {
             },
         ],
     });
+
+    useEffect(() => {
+        if (storyId) {
+            // Load story content when storyId is available
+            // You can implement this part to load the story content from Supabase
+            const loadStoryContent = async () => {
+                // Add your loading logic here
+            };
+            loadStoryContent();
+        }
+    }, [storyId]);
 
     // Renders the editor instance.
     return (
@@ -111,4 +127,6 @@ export default function App() {
             />
         </BlockNoteView>
     );
-}
+};
+
+export default Editor;

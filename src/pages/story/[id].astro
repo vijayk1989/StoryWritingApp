@@ -1,0 +1,30 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Editor from '../../components/Editor';
+import SideNav from '../../components/SideNav';
+import { supabase } from '../../lib/supabase';
+
+const { id } = Astro.params;
+
+// Fetch the story
+const { data: story } = await supabase
+  .from('stories')
+  .select('*')
+  .eq('id', id)
+  .single();
+
+if (!story) {
+  return Astro.redirect('/');
+}
+---
+
+<Layout title={story.title}>
+  <div class="flex min-h-screen">
+    <SideNav client:load />
+    <main class="flex-1 w-full lg:ml-[5%]">
+      <div class="w-[90%] sm:max-w-4xl mx-auto lg:py-8 sm:px-4">
+        <Editor client:only="react" storyId={id} />
+      </div>
+    </main>
+  </div>
+</Layout> 

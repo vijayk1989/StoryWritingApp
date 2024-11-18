@@ -1,16 +1,121 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Editor from '../components/Editor';
-import SideNav from '../components/SideNav';
+import Layout from "../layouts/Layout.astro";
+import { supabase } from "../lib/supabase";
+import { RiDeleteBinLine } from 'react-icons/ri'
+
+const { data: { user } } = await supabase.auth.getUser();
+
+// Fetch user's stories
+const { data: stories } = await supabase
+  .from('stories')
+  .select('*')
+  .order('created_at', { ascending: false });
 ---
 
-<Layout title="Writer">
-  <div class="flex min-h-screen">
-    <SideNav client:load />
-    <main class="flex-1 w-full lg:ml-[5%]">
-      <div class="w-[90%] sm:max-w-4xl mx-auto lg:py-8 sm:px-4">
-        <Editor client:only="react" />
+<Layout title="Home">
+  <div class="min-h-screen p-8">
+    <header class="max-w-4xl mx-auto">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-2xl font-bold">Welcome {user?.email}</h1>
+          <p class="text-gray-600 mt-2">Your creative journey begins here</p>
+        </div>
+        <form action="/api/auth/signout">
+          <button 
+            type="submit"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+          >
+            Sign out
+          </button>
+        </form>
+      </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto mt-8">
+      <!-- Create Story Form -->
+      <div class="mb-8">
+        <form 
+          id="createStoryForm"
+          action="/api/stories/create" 
+          method="POST" 
+          class="flex gap-4 items-center"
+        >
+          <div class="flex-1">
+            <input
+              type="text"
+              id="title"
+              name="title"
+              placeholder="Enter story title..."
+              required
+              class="w-full rounded-md border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            id="submitButton"
+            type="submit"
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <span>Create Story</span>
+            <span id="spinner" class="hidden">
+              <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Stories List -->
+      <h2 class="text-xl font-semibold mb-6">Your Stories</h2>
+      <div class="grid gap-6">
+        {stories?.length === 0 ? (
+          <div class="text-center py-12">
+            <p class="text-gray-500">You haven't created any stories yet.</p>
+            <p class="text-gray-500">Enter a title above to create your first story!</p>
+          </div>
+        ) : (
+          stories?.map((story) => (
+            <div class="relative group">
+              <a
+                href={`/story/${story.id}`}
+                class="block p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200"
+              >
+                <h3 class="text-xl font-semibold">{story.title}</h3>
+                <p class="text-gray-400 text-sm mt-4">
+                  Created {new Date(story.created_at).toLocaleDateString()}
+                </p>
+              </a>
+              <form 
+                method="POST"
+                action={`/api/stories/${story.id}/delete`}
+                class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <button
+                  type="submit"
+                  class="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
+                  title="Delete story"
+                >
+                  <RiDeleteBinLine className="w-5 h-5" />
+                </button>
+              </form>
+            </div>
+          ))
+        )}
       </div>
     </main>
   </div>
 </Layout>
+
+<script>
+  const form = document.getElementById('createStoryForm');
+  const spinner = document.getElementById('spinner');
+  const submitButton = document.getElementById('submitButton') as HTMLButtonElement;
+  const buttonText = submitButton.querySelector('span') as HTMLSpanElement;
+
+  form.addEventListener('submit', (e) => {
+    spinner.classList.remove('hidden');
+    buttonText.textContent = 'Creating...';
+    submitButton.disabled = true;
+  });
+</script>
