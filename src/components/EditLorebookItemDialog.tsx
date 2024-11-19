@@ -1,23 +1,24 @@
-import { useState } from 'react'
-import { useLorebookStore } from '../store/useLorebookStore'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
 import { Button } from './ui/button'
 import { Label } from './ui/label'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { Card, CardContent } from './ui/card'
-
-interface CreateLorebookItemFormProps {
-    lorebookId: string
-}
+import { useState, useEffect } from 'react'
+import { useLorebookStore } from '../store/useLorebookStore'
+import type { LorebookItem } from '../types/lorebook'
+import toast from 'react-hot-toast'
 
 const CLASSIFICATIONS = ['Character', 'Item', 'Location'] as const
 const LORE_TYPES = ['Background', 'Artifact', 'Spell', 'Protagonist', 'Antagonist', 'Plot', 'Other'] as const
 
-export default function CreateLorebookItemForm({ lorebookId }: CreateLorebookItemFormProps) {
-    const { createLorebookItem, isCreating } = useLorebookStore()
-    const [isOpen, setIsOpen] = useState(false)
+interface EditLorebookItemDialogProps {
+    item: LorebookItem | null
+    onClose: () => void
+}
 
+export default function EditLorebookItemDialog({ item, onClose }: EditLorebookItemDialogProps) {
+    const { updateLorebookItem } = useLorebookStore()
     const [formData, setFormData] = useState({
         name: '',
         tags: '',
@@ -26,57 +27,56 @@ export default function CreateLorebookItemForm({ lorebookId }: CreateLorebookIte
         description: ''
     })
 
+    useEffect(() => {
+        if (item) {
+            setFormData({
+                name: item.name,
+                tags: item.tags || '',
+                classification: item.classification,
+                lore_type: item.lore_type,
+                description: item.description || ''
+            })
+        }
+    }, [item])
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!item) return
+
         try {
-            await createLorebookItem({
+            await updateLorebookItem(item.id, {
                 ...formData,
-                lorebook_id: lorebookId
+                lorebook_id: item.lorebook_id
             })
-            setFormData({
-                name: '',
-                tags: '',
-                classification: 'Character',
-                lore_type: 'Background',
-                description: ''
-            })
-            setIsOpen(false)
+            toast.success('Item updated successfully')
+            onClose()
         } catch (error) {
-            console.error('Failed to create lorebook item:', error)
+            toast.error('Failed to update item')
+            console.error('Failed to update lorebook item:', error)
         }
     }
 
-    if (!isOpen) {
-        return (
-            <Button
-                onClick={() => setIsOpen(true)}
-                variant="outline"
-                className="w-full p-6 border-2 border-dashed bg-white hover:bg-white"
-            >
-                + Add Lorebook Item
-            </Button>
-        )
-    }
-
     return (
-        <Card className="bg-white">
-            <CardContent className="pt-6">
-                <form onSubmit={handleSubmit} className="space-y-4">
+        <Dialog open={!!item} onOpenChange={() => onClose()}>
+            <DialogContent className="sm:max-w-[600px] bg-white text-gray-900">
+                <DialogHeader>
+                    <DialogTitle>Edit Lorebook Item</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Name</Label>
+                        <Label>Name</Label>
                         <Input
-                            id="name"
                             value={formData.name}
                             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="Enter name"
                             className="bg-white border-gray-300"
                             required
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="tags">Tags (comma-separated)</Label>
+                        <Label>Tags (comma-separated)</Label>
                         <Input
-                            id="tags"
                             value={formData.tags}
                             onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
                             placeholder="tag1, tag2, tag3"
@@ -86,7 +86,7 @@ export default function CreateLorebookItemForm({ lorebookId }: CreateLorebookIte
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="classification">Classification</Label>
+                            <Label>Classification</Label>
                             <Select
                                 value={formData.classification}
                                 onValueChange={(value) => setFormData(prev => ({ ...prev, classification: value }))}
@@ -108,7 +108,7 @@ export default function CreateLorebookItemForm({ lorebookId }: CreateLorebookIte
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="lore_type">Lore Type</Label>
+                            <Label>Lore Type</Label>
                             <Select
                                 value={formData.lore_type}
                                 onValueChange={(value) => setFormData(prev => ({ ...prev, lore_type: value }))}
@@ -131,34 +131,31 @@ export default function CreateLorebookItemForm({ lorebookId }: CreateLorebookIte
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
+                        <Label>Description</Label>
                         <Textarea
-                            id="description"
                             value={formData.description}
                             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                            rows={4}
-                            className="min-h-[100px] bg-white border-gray-300"
+                            placeholder="Enter description"
+                            className="min-h-[150px] bg-white border-gray-300"
                             required
                         />
                     </div>
 
-                    <div className="flex justify-end gap-3">
+                    <div className="flex justify-end gap-3 pt-4">
                         <Button
                             type="button"
-                            variant="ghost"
-                            onClick={() => setIsOpen(false)}
+                            variant="outline"
+                            onClick={onClose}
+                            className="border-gray-300"
                         >
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            disabled={isCreating}
-                        >
-                            {isCreating ? 'Creating...' : 'Create'}
+                        <Button type="submit">
+                            Save Changes
                         </Button>
                     </div>
                 </form>
-            </CardContent>
-        </Card>
+            </DialogContent>
+        </Dialog>
     )
 }

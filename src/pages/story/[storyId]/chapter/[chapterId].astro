@@ -23,24 +23,8 @@ if (!chapter) {
 <Layout title={`${chapter.stories.title} - ${chapter.title}`}>
   <div class="flex min-h-screen">
     <SideNav client:load storyId={storyId} />
-    <main class="flex-1 w-full lg:ml-[5%]">
-      <div class="w-[90%] mt-8 sm:max-w-4xl mx-auto lg:py-8 sm:px-4">
-        <div class="mb-6 pl-12 lg:pl-0">
-          <a 
-            href={`/story/${storyId}`}
-            class="text-blue-600 hover:text-blue-700 text-sm"
-          >
-            ← Back to Chapters
-          </a>
-          <h1 class="text-2xl font-bold mt-2">{chapter.title}</h1>
-          {chapter.summary && (
-            <p class="text-gray-600 mt-2">{chapter.summary}</p>
-          )}
-        </div>
-        <div class="pl-12 lg:pl-0">
-          <Editor client:only="react" chapterId={chapterId} />
-        </div>
-      </div>
+    <main class="flex-1">
+      <Editor client:only="react" chapterId={chapterId} />
     </main>
   </div>
   <Toaster client:load />

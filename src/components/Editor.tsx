@@ -15,9 +15,10 @@ import {
 } from '@blocknote/react';
 import { RiAlertFill } from 'react-icons/ri';
 import { SceneBeat } from './SceneBeat';
-import { useEffect, useMemo, useState } from 'react';
-import { useChapterStore } from '../store/useChapterStore';
+import { useMemo, useState } from 'react';
+import { useChapter, useChapterStore } from '../store/useChapterStore';
 import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
 
 const sendToBackend = async (textData: string) => {
     try {
@@ -88,130 +89,112 @@ interface EditorProps {
 }
 
 const Editor = ({ chapterId }: EditorProps) => {
-    const [initialContent, setInitialContent] = useState<PartialBlock[] | undefined | "loading">("loading");
-    const [isSaving, setIsSaving] = useState(false);
-    const { currentChapter, fetchChapter, updateChapter } = useChapterStore();
-
-    // Load chapter content
-    useEffect(() => {
-        const loadChapterContent = async () => {
-            try {
-                console.log('Fetching chapter content...');
-                await fetchChapter(chapterId);
-                
-                const chapter = useChapterStore.getState().currentChapter;
-                
-                if (chapter?.chapter_data?.content) {
-                    console.log('Found existing content:', chapter.chapter_data.content);
-                    // Parse the content if it's a string (JSON)
-                    const content = typeof chapter.chapter_data.content === 'string' 
-                        ? JSON.parse(chapter.chapter_data.content).content 
-                        : chapter.chapter_data.content;
-                    
-                    setInitialContent(content);
-                } else {
-                    console.log('No existing content, setting default content');
-                    setInitialContent([{
-                        id: crypto.randomUUID(),
-                        type: 'paragraph',
-                        props: {
-                            textColor: 'default',
-                            textAlignment: 'left',
-                            backgroundColor: 'default'
-                        },
-                        content: [{
-                            type: 'text',
-                            text: 'Start writing your story here...',
-                            styles: {}
-                        }],
-                        children: []
-                    }]);
-                }
-            } catch (error) {
-                console.error('Error loading chapter:', error);
-                toast.error('Failed to load chapter content');
-                setInitialContent(undefined);
-            }
-        };
-
-        loadChapterContent();
-    }, [chapterId]);
+    const { data: chapter, error, isLoading } = useChapter(chapterId)
+    const { updateChapter } = useChapterStore()
+    const [isSaving, setIsSaving] = useState(false)
 
     // Create editor instance after content is loaded
     const editor = useMemo(() => {
-        if (initialContent === "loading") {
-            return undefined;
+        if (isLoading || !chapter) {
+            return undefined
         }
-        console.log('Creating editor with initial content:', initialContent);
-        return BlockNoteEditor.create({ 
+
+        const initialContent = chapter.chapter_data?.content
+            ? (typeof chapter.chapter_data.content === 'string'
+                ? JSON.parse(chapter.chapter_data.content).content
+                : chapter.chapter_data.content)
+            : [{
+                id: crypto.randomUUID(),
+                type: 'paragraph',
+                props: {
+                    textColor: 'default',
+                    textAlignment: 'left',
+                    backgroundColor: 'default'
+                },
+                content: [{
+                    type: 'text',
+                    text: 'Start writing your story here...',
+                    styles: {}
+                }],
+                children: []
+            }]
+
+        return BlockNoteEditor.create({
             schema,
-            initialContent 
-        });
-    }, [initialContent]);
+            initialContent
+        })
+    }, [chapter, isLoading])
 
     const handleSave = async () => {
-        if (!editor) return;
+        if (!editor) return
 
-        setIsSaving(true);
-        console.log('Starting save process...');
-        console.log('Current document:', editor.document);
-        
+        setIsSaving(true)
         try {
-            const updateData = {
+            await updateChapter(chapterId, {
                 chapter_data: {
                     content: editor.document
                 }
-            };
-            console.log('Sending update data:', updateData);
-
-            await updateChapter(chapterId, updateData);
-            console.log('Save successful');
-            toast.success('Chapter saved successfully');
+            })
+            toast.success('Chapter saved successfully')
         } catch (error) {
-            console.error('Error saving chapter:', error);
-            toast.error('Failed to save chapter');
+            console.error('Error saving chapter:', error)
+            toast.error('Failed to save chapter')
         } finally {
-            setIsSaving(false);
+            setIsSaving(false)
         }
-    };
+    }
 
-    if (!editor) {
+    if (isLoading || !editor) {
         return (
             <div className="flex items-center justify-center min-h-[200px]">
                 <div className="text-gray-500">Loading editor...</div>
             </div>
-        );
+        )
+    }
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center min-h-[200px]">
+                <div className="text-red-500">Error loading chapter content</div>
+            </div>
+        )
     }
 
     return (
         <div className="relative min-h-screen">
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 p-2 flex justify-end">
-                <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 
-                             disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                    {isSaving ? (
-                        <>
-                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                            </svg>
-                            Saving...
-                        </>
-                    ) : (
-                        <>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                            </svg>
-                            Save
-                        </>
-                    )}
-                </button>
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
+                <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="h-16 flex items-center justify-between">
+                        <h1 className="text-xl pl-8 lg:pl-0 font-semibold text-gray-900">
+                            {chapter.title}
+                        </h1>
+                        <Button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="flex items-center gap-2"
+                        >
+                            {isSaving ? (
+                                <>
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                    </svg>
+                                    Save
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </div>
             </div>
-            <div className="p-4">
-                <BlockNoteView 
+            <div className="py-6 px-4">
+                <BlockNoteView
                     editor={editor}
                     slashMenu={false}
                 >

@@ -1,5 +1,32 @@
 import { create } from 'zustand'
-import { mutate } from 'swr'
+import useSWR, { mutate } from 'swr'
+
+// SWR fetcher function
+const fetchStories = async () => {
+    const response = await fetch('/api/stories')
+    if (!response.ok) throw new Error('Failed to fetch stories')
+    return response.json()
+}
+
+// Custom hook for stories data
+export const useStories = () => {
+    return useSWR('/api/stories', fetchStories)
+}
+
+// SWR fetcher for single story
+const fetchStory = async (storyId: string) => {
+    const response = await fetch(`/api/stories/${storyId}`)
+    if (!response.ok) throw new Error('Failed to fetch story')
+    return response.json()
+}
+
+// Custom hook for single story
+export const useStory = (storyId: string) => {
+    return useSWR(
+        storyId ? `/api/stories/${storyId}` : null,
+        () => fetchStory(storyId)
+    )
+}
 
 interface StoryState {
     isCreating: boolean

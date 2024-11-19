@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { HiChevronRight, HiX } from 'react-icons/hi';
+import { HiChevronRight, HiX, HiBookOpen, HiCog, HiChat, HiHome } from 'react-icons/hi';
 
 interface SideNavProps {
   storyId?: string;
@@ -14,14 +14,15 @@ const SideNav = ({ storyId }: SideNavProps) => {
     setCurrentPath(window.location.pathname);
   }, []);
 
-  const menuItems = storyId ? [
-    { name: 'Chapters', icon: '📚', path: `/story/${storyId}` },
-    { name: 'Lorebook', icon: '📖', path: `/story/${storyId}/lorebook` },
-    { name: 'AI Settings', icon: '⚙️', path: `/story/${storyId}/settings` },
-    { name: 'Prompts', icon: '💭', path: `/story/${storyId}/prompts` },
-    { name: 'Chats', icon: '💬', path: `/story/${storyId}/chats` },
-  ] : [
-    { name: 'My Stories', icon: '📚', path: '/' },
+  const menuItems = [
+    ...(storyId ? [
+      { name: 'Chapters', icon: <HiBookOpen className="w-5 h-5" />, path: `/story/${storyId}` },
+      { name: 'Lorebook', icon: <HiBookOpen className="w-5 h-5" />, path: `/story/${storyId}/lorebook` },
+      { name: 'AI Settings', icon: <HiCog className="w-5 h-5" />, path: `/story/${storyId}/settings` },
+      { name: 'Prompts', icon: <HiChat className="w-5 h-5" />, path: `/story/${storyId}/prompts` },
+      { name: 'Chats', icon: <HiChat className="w-5 h-5" />, path: `/story/${storyId}/chats` },
+    ] : []),
+    { name: 'My Stories', icon: <HiHome className="w-5 h-5" />, path: '/' }
   ];
 
   return (

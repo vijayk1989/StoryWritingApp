@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useChapterStore } from '../store/useChapterStore'
+import { useState } from 'react'
+import { useChapters, useChapterStore } from '../store/useChapterStore'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion'
 import { Button } from './ui/button'
 import { HiPencilSquare, HiTrash } from 'react-icons/hi2'
@@ -20,13 +20,10 @@ interface ChaptersListProps {
 }
 
 export default function ChaptersList({ storyId }: ChaptersListProps) {
-  const { chapters, isLoading, error, fetchChapters, updateChapter, deleteChapter } = useChapterStore()
+  const { data: chapters, error, isLoading } = useChapters(storyId)
+  const { updateChapter, deleteChapter } = useChapterStore()
   const [editingSummary, setEditingSummary] = useState<string | null>(null)
   const [chapterToDelete, setChapterToDelete] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetchChapters(storyId)
-  }, [storyId])
 
   const handleSaveSummary = async (chapterId: string, summary: string) => {
     try {
@@ -40,7 +37,7 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
 
   const handleDelete = async (chapterId: string) => {
     try {
-      await deleteChapter(chapterId)
+      await deleteChapter(chapterId, storyId)
       toast.success('Chapter deleted')
       setChapterToDelete(null)
     } catch (error) {
@@ -83,7 +80,7 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
                 <h3 className="text-lg font-semibold">
                   {chapter.title}
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center">
                   <a
                     href={`/story/${storyId}/chapter/${chapter.id}`}
                     className="p-2 text-gray-500 hover:text-gray-700"
@@ -96,7 +93,7 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
                       e.stopPropagation()
                       setChapterToDelete(chapter.id)
                     }}
-                    className="p-2 text-gray-500 hover:text-red-600"
+                    className="p-2 mr-3 text-gray-500 hover:text-red-600"
                   >
                     <HiTrash className="h-5 w-5" />
                   </button>
