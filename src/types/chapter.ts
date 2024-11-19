@@ -12,7 +12,3 @@ export interface Chapter {
     created_at: string
     updated_at: string
 }
-
-export interface ChapterData {
-    content: any // Define based on your editor's data structure
-}
