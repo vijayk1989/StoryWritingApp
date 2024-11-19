@@ -39,21 +39,23 @@ npm run dev
 ```
 
 ## 📦 Project Structure
+```
 /
 ├── public/
-│ └── favicon.svg
+│   └── favicon.svg
 ├── src/
-│ ├── components/ # React components
-│ ├── layouts/ # Astro layouts
-│ ├── pages/ # Astro pages
-│ ├── store/ # Zustand stores
-│ ├── types/ # TypeScript types
-│ └── lib/ # Utility functions
-├── .astro # Astro configuration
-├── .env # Environment variables
-├── .gitignore # Git ignore file
-├── package.json # Node.js package manager file
-├── README.md # This file
+│   ├── components/     # React components
+│   ├── layouts/        # Astro layouts
+│   ├── pages/          # Astro pages
+│   ├── store/          # Zustand stores
+│   ├── types/          # TypeScript types
+│   └── lib/           # Utility functions
+├── .astro             # Astro configuration
+├── .env               # Environment variables
+├── .gitignore         # Git ignore file
+├── package.json       # Node.js package manager file
+└── README.md          # This file
+```
 
 
 ## 🧞 Commands
