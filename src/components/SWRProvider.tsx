@@ -1,8 +1,11 @@
 import { SWRConfig } from 'swr'
 
+// Create a singleton cache provider outside of the component
+const globalCacheProvider = new Map()
+
 export default function SWRProvider({ children }: { children: React.ReactNode }) {
   return (
-    <SWRConfig 
+    <SWRConfig
       value={{
         revalidateOnFocus: false,
         revalidateOnReconnect: true,
@@ -10,7 +13,8 @@ export default function SWRProvider({ children }: { children: React.ReactNode })
         shouldRetryOnError: true,
         errorRetryCount: 3,
         keepPreviousData: true,
-        provider: () => new Map(),
+        // Use the singleton cache provider instead of creating a new one
+        provider: () => globalCacheProvider,
       }}
     >
       {children}

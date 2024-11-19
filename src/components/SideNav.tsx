@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { HiChevronRight, HiX } from 'react-icons/hi';
 
 interface SideNavProps {
   storyId?: string;
@@ -44,8 +45,8 @@ const SideNav = ({ storyId }: SideNavProps) => {
                 href={item.path}
                 className={`
                   w-full flex items-center gap-3 px-4 py-3 transition-colors
-                  ${currentPath === item.path 
-                    ? 'bg-blue-50 text-blue-600' 
+                  ${currentPath === item.path
+                    ? 'bg-blue-50 text-blue-600'
                     : 'text-gray-700 hover:bg-gray-50'
                   }
                 `}
@@ -58,22 +59,22 @@ const SideNav = ({ storyId }: SideNavProps) => {
         </div>
       </nav>
 
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          lg:hidden fixed z-[60] p-2 hover:bg-gray-100 rounded-md text-gray-700
-          ${isOpen 
-            ? 'top-[5px] left-[240px]'
-            : 'top-[5px] left-[5px]'
+          lg:hidden fixed z-[60] text-gray-700
+          ${isOpen
+            ? 'top-[12px] left-[240px]'
+            : 'top-[12px] left-[16px]'
           }
           transition-all duration-200 ease-in-out
         `}
       >
-        {isOpen ? '✕' : '☰'}
+        {isOpen ? <HiX size={24} /> : <HiChevronRight size={24} />}
       </button>
 
       {isOpen && (
-        <div 
+        <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-[40]"
           onClick={() => setIsOpen(false)}
         />

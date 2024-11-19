@@ -81,9 +81,28 @@ export const useChapterStore = create<ChapterState>((set, get) => ({
     createChapter: async (chapterData) => {
         set({ isCreating: true })
         try {
+            // First, get the highest chapter number for this story
+            const { data: existingChapters, error: fetchError } = await supabase
+                .from('chapters')
+                .select('chapter_number')
+                .eq('story_id', chapterData.story_id)
+                .order('chapter_number', { ascending: false })
+                .limit(1)
+
+            if (fetchError) throw fetchError
+
+            // Calculate next chapter number
+            const nextChapterNumber = existingChapters && existingChapters.length > 0
+                ? existingChapters[0].chapter_number + 1
+                : 1
+
+            // Create new chapter with calculated number
             const { data, error } = await supabase
                 .from('chapters')
-                .insert([chapterData])
+                .insert([{
+                    ...chapterData,
+                    chapter_number: nextChapterNumber
+                }])
                 .select()
                 .single()
 

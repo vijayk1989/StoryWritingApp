@@ -5,7 +5,7 @@ import CreateStoryForm from "../components/CreateStoryForm";
 import StoriesList from "../components/StoriesList";
 import Toaster from "../components/Toaster";
 import SWRProvider from "../components/SWRProvider";
-
+import "../styles/global.css";
 const { data: { user } } = await supabase.auth.getUser();
 
 // Redirect if not authenticated

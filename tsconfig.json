@@ -6,5 +6,9 @@
     "strict": false,
     "noImplicitAny": false,
     "verbatimModuleSyntax": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   }
 }

@@ -24,14 +24,16 @@ if (!story) {
 <Layout title={story.title}>
   <div class="flex min-h-screen">
     <SideNav client:load storyId={id} />
-    <main class="flex-1 w-full lg:ml-[5%]">
-      <div class="w-[90%] sm:max-w-4xl mx-auto lg:py-8 sm:px-4">
+    <main class="flex-1 w-full">
+      <div class="w-[90%] sm:max-w-4xl mx-auto mt-12 lg:mt-0 lg:py-8 sm:px-4">
         <SWRProvider client:load>
-          <h1 class="text-2xl font-bold mb-8">{story.title}</h1>
-          <CreateChapterForm client:load storyId={id} />
-          <div class="mt-8">
-            <h2 class="text-xl font-semibold mb-6">Chapters</h2>
-            <ChaptersList client:load storyId={id} />
+          <div class="lg:pl-0">
+            <h1 class="text-2xl font-bold mb-8">{story.title}</h1>
+            <CreateChapterForm client:load storyId={id} />
+            <div class="mt-8">
+              <h2 class="text-xl font-semibold mb-6">Chapters</h2>
+              <ChaptersList client:load storyId={id} />
+            </div>
           </div>
         </SWRProvider>
       </div>
