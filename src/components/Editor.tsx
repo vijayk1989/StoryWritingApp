@@ -15,8 +15,9 @@ import {
 } from '@blocknote/react';
 import { RiAlertFill } from 'react-icons/ri';
 import { SceneBeat } from './SceneBeat';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useChapter, useChapterStore } from '../store/useChapterStore';
+import { useLorebookStore } from '../store/useLorebookStore';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 
@@ -92,6 +93,20 @@ const Editor = ({ chapterId }: EditorProps) => {
     const { data: chapter, error, isLoading } = useChapter(chapterId)
     const { updateChapter } = useChapterStore()
     const [isSaving, setIsSaving] = useState(false)
+
+    // Get lorebook items for the current story
+    const { lorebookItems, lorebookItemsByTag, findItemByTag } = useLorebookStore()
+
+    useEffect(() => {
+        console.log('All lorebook items:', lorebookItems)
+        console.log('Lorebook items by tag:', lorebookItemsByTag)
+
+        // Example lookups
+        const hermioneByName = findItemByTag('Hermione Granger')
+        const hermioneByTag = findItemByTag('Hermione')
+        console.log('Hermione by name:', hermioneByName)
+        console.log('Hermione by tag:', hermioneByTag)
+    }, [lorebookItems, lorebookItemsByTag])
 
     // Create editor instance after content is loaded
     const editor = useMemo(() => {

@@ -88,15 +88,15 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
                   >
                     <HiPencilSquare className="h-5 w-5" />
                   </a>
-                  <button
+                  <div
                     onClick={(e) => {
                       e.stopPropagation()
                       setChapterToDelete(chapter.id)
                     }}
-                    className="p-2 mr-3 text-gray-500 hover:text-red-600"
+                    className="p-2 mr-3 text-gray-500 hover:text-red-600 cursor-pointer"
                   >
                     <HiTrash className="h-5 w-5" />
-                  </button>
+                  </div>
                 </div>
               </div>
             </AccordionTrigger>

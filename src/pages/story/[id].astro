@@ -6,10 +6,10 @@ import CreateChapterForm from '../../components/CreateChapterForm';
 import { supabase } from '../../lib/supabase';
 import Toaster from '../../components/Toaster';
 import SWRProvider from '../../components/SWRProvider';
+import { StoryContext } from '../../components/StoryContext';
 
 const { id } = Astro.params;
 
-// Fetch the story
 const { data: story } = await supabase
   .from('stories')
   .select('*')
@@ -22,6 +22,7 @@ if (!story) {
 ---
 
 <Layout title={story.title}>
+  <StoryContext client:load storyId={id} />
   <div class="flex min-h-screen">
     <SideNav client:load storyId={id} />
     <main class="flex-1 w-full">

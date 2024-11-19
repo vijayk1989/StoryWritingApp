@@ -1,4 +1,6 @@
 import { createReactBlockSpec } from '@blocknote/react';
+import { useLorebookItems, useLorebookStore } from '../store/useLorebookStore';
+import { useEffect } from 'react';
 import './styles.css';
 
 // The Scene Beat block.
@@ -11,6 +13,19 @@ export const SceneBeat = (sendToBackend: (textData: string) => Promise<Response>
         },
         {
             render: (props) => {
+                const { lorebookItems, lorebookItemsByTag, findItemByTag } = useLorebookStore()
+
+                useEffect(() => {
+                    console.log('All lorebook items:', lorebookItems)
+                    console.log('Lorebook items by tag:', lorebookItemsByTag)
+
+                    // Example lookups
+                    const hermioneByName = findItemByTag('Hermione Granger')
+                    const hermioneByTag = findItemByTag('Hermione')
+                    console.log('Hermione by name:', hermioneByName)
+                    console.log('Hermione by tag:', hermioneByTag)
+                }, [lorebookItems, lorebookItemsByTag])
+
                 const handleGenerateClick = async () => {
                     const block = props.editor.getBlock(props.block.id);
                     if (!block?.content) return;

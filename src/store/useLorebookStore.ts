@@ -1,27 +1,8 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
-import type { Lorebook, LorebookItem } from '../types/lorebook'
+import type { LorebookItem } from '../types/lorebook'
 import useSWR, { mutate } from 'swr'
-
-// SWR fetcher functions
-const fetchLorebook = async (storyId: string) => {
-    const { data, error } = await supabase
-        .from('lorebooks')
-        .select('*')
-        .eq('story_id', storyId)
-        .single()
-
-    if (error) throw error
-    return data
-}
-
-// Custom hook for lorebook data
-export const useLorebook = (storyId: string) => {
-    return useSWR(
-        storyId ? `lorebook/${storyId}` : null,
-        () => fetchLorebook(storyId)
-    )
-}
+import { lorebookDB } from '../lib/indexedDB'
 
 // SWR fetcher for lorebook items
 const fetchLorebookItems = async (lorebookId: string) => {
@@ -35,35 +16,163 @@ const fetchLorebookItems = async (lorebookId: string) => {
     return data
 }
 
-// Custom hook for lorebook items
-export const useLorebookItems = (lorebookId: string) => {
-    return useSWR(
-        lorebookId ? `lorebook-items/${lorebookId}` : null,
-        () => fetchLorebookItems(lorebookId)
-    )
+// Type for simplified lorebook item
+interface SimplifiedLorebookItem {
+    name: string
+    tags: string | string[]
+    classification: string
+    lore_type: string
+    description: string
+}
+
+interface LorebookItemsByTag {
+    [tag: string]: SimplifiedLorebookItem
+}
+
+// Helper function to simplify lorebook item
+const simplifyLorebookItem = (item: LorebookItem): SimplifiedLorebookItem => {
+    const {
+        name,
+        tags,
+        classification,
+        lore_type,
+        description
+    } = item
+
+    return {
+        name,
+        tags,
+        classification,
+        lore_type,
+        description
+    }
 }
 
 interface LorebookState {
+    currentStoryId: string | null
+    lorebookItems: LorebookItem[]
+    lorebookItemsByTag: LorebookItemsByTag
     isCreating: boolean
     error: string | null
+    setCurrentStory: (storyId: string | null) => void
+    setLorebookItems: (items: LorebookItem[]) => void
     createLorebookItem: (data: Partial<LorebookItem>) => Promise<void>
     updateLorebookItem: (id: string, data: Partial<LorebookItem>) => Promise<void>
     deleteLorebookItem: (id: string, lorebookId: string) => Promise<void>
+    findItemByTag: (tag: string) => SimplifiedLorebookItem | undefined
 }
 
-export const useLorebookStore = create<LorebookState>((set) => ({
+// Helper function to convert array to tag-based map
+const createTagMap = (items: LorebookItem[]): LorebookItemsByTag => {
+    const tagMap: LorebookItemsByTag = {}
+
+    items.forEach(item => {
+        const simplifiedItem = simplifyLorebookItem(item)
+
+        // Add the item name as a tag
+        const normalizedName = item.name.toLowerCase().trim()
+        tagMap[normalizedName] = simplifiedItem
+
+        // Handle tags whether they're a string or array
+        if (item.tags) {
+            let tagsArray: string[] = []
+
+            if (typeof item.tags === 'string') {
+                // Split string tags and handle potential spaces after commas
+                tagsArray = item.tags.split(',').map(tag => tag.trim())
+            } else if (Array.isArray(item.tags)) {
+                tagsArray = item.tags
+            }
+
+            // Add each tag to the map
+            tagsArray.forEach(tag => {
+                const normalizedTag = tag.toLowerCase().trim()
+                tagMap[normalizedTag] = simplifiedItem
+            })
+        }
+    })
+
+    return tagMap
+}
+
+export const useLorebookStore = create<LorebookState>((set, get) => ({
+    currentStoryId: null,
+    lorebookItems: [],
+    lorebookItemsByTag: {},
     isCreating: false,
     error: null,
+
+    setCurrentStory: async (storyId) => {
+        if (storyId !== get().currentStoryId) {
+            set({
+                lorebookItems: [],
+                lorebookItemsByTag: {}
+            })
+
+            if (storyId) {
+                try {
+                    const cachedItems = await lorebookDB.getItems(storyId)
+                    if (cachedItems?.length > 0) {
+                        set({
+                            currentStoryId: storyId,
+                            lorebookItems: cachedItems,
+                            lorebookItemsByTag: createTagMap(cachedItems)
+                        })
+                        return
+                    }
+                } catch (error) {
+                    console.error('Error loading from IndexedDB:', error)
+                }
+            } else {
+                try {
+                    await lorebookDB.clearAll()
+                } catch (error) {
+                    console.error('Error clearing IndexedDB:', error)
+                }
+            }
+
+            set({ currentStoryId: storyId })
+        }
+    },
+
+    setLorebookItems: async (items) => {
+        set({
+            lorebookItems: items,
+            lorebookItemsByTag: createTagMap(items)
+        })
+
+        const storyId = get().currentStoryId
+        if (storyId) {
+            try {
+                await lorebookDB.setItems(storyId, items)
+            } catch (error) {
+                console.error('Error caching to IndexedDB:', error)
+            }
+        }
+    },
 
     createLorebookItem: async (itemData) => {
         set({ isCreating: true })
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('lorebook_items')
                 .insert([itemData])
+                .select()
+                .single()
 
             if (error) throw error
-            // Revalidate the items list
+
+            const newItems = [...get().lorebookItems, data]
+            set({
+                lorebookItems: newItems,
+                lorebookItemsByTag: createTagMap(newItems)
+            })
+
+            const storyId = get().currentStoryId
+            if (storyId) {
+                await lorebookDB.setItems(storyId, newItems)
+            }
+
             await mutate(`lorebook-items/${itemData.lorebook_id}`)
         } catch (error) {
             set({ error: (error as Error).message })
@@ -73,15 +182,30 @@ export const useLorebookStore = create<LorebookState>((set) => ({
         }
     },
 
-    updateLorebookItem: async (id: string, itemData) => {
+    updateLorebookItem: async (id, itemData) => {
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('lorebook_items')
                 .update(itemData)
                 .eq('id', id)
+                .select()
+                .single()
 
             if (error) throw error
-            // Revalidate the items list
+
+            const updatedItems = get().lorebookItems.map(item =>
+                item.id === id ? { ...item, ...data } : item
+            )
+            set({
+                lorebookItems: updatedItems,
+                lorebookItemsByTag: createTagMap(updatedItems)
+            })
+
+            const storyId = get().currentStoryId
+            if (storyId) {
+                await lorebookDB.setItems(storyId, updatedItems)
+            }
+
             await mutate(`lorebook-items/${itemData.lorebook_id}`)
         } catch (error) {
             set({ error: (error as Error).message })
@@ -89,7 +213,7 @@ export const useLorebookStore = create<LorebookState>((set) => ({
         }
     },
 
-    deleteLorebookItem: async (id: string, lorebookId: string) => {
+    deleteLorebookItem: async (id, lorebookId) => {
         try {
             const { error } = await supabase
                 .from('lorebook_items')
@@ -97,11 +221,69 @@ export const useLorebookStore = create<LorebookState>((set) => ({
                 .eq('id', id)
 
             if (error) throw error
-            // Revalidate the items list
+
+            const updatedItems = get().lorebookItems.filter(item => item.id !== id)
+            set({
+                lorebookItems: updatedItems,
+                lorebookItemsByTag: createTagMap(updatedItems)
+            })
+
+            const storyId = get().currentStoryId
+            if (storyId) {
+                await lorebookDB.setItems(storyId, updatedItems)
+            }
+
             await mutate(`lorebook-items/${lorebookId}`)
         } catch (error) {
             set({ error: (error as Error).message })
             throw error
         }
+    },
+
+    // Helper function to find item by tag (case-insensitive)
+    findItemByTag: (tag: string) => {
+        const normalizedTag = tag.toLowerCase().trim()
+        return get().lorebookItemsByTag[normalizedTag]
     }
 }))
+
+// Custom hook for lorebook items
+export const useLorebookItems = (lorebookId?: string) => {
+    const { currentStoryId, lorebookItems, setLorebookItems } = useLorebookStore()
+
+    return useSWR(
+        lorebookId ? `lorebook-items/${lorebookId}` : null,
+        async () => {
+            // If we have items in cache and we're in the same story context, use them
+            if (lorebookItems.length > 0 && currentStoryId) {
+                return lorebookItems
+            }
+
+            // Try to load from IndexedDB first
+            if (currentStoryId) {
+                try {
+                    const cachedItems = await lorebookDB.getItems(currentStoryId)
+                    if (cachedItems?.length > 0) {
+                        setLorebookItems(cachedItems)
+                        return cachedItems
+                    }
+                } catch (error) {
+                    console.error('Error loading from IndexedDB:', error)
+                }
+            }
+
+            // Fetch from DB if not in cache and we have a lorebookId
+            if (lorebookId) {
+                const items = await fetchLorebookItems(lorebookId)
+                setLorebookItems(items)
+                return items
+            }
+
+            return []
+        },
+        {
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false
+        }
+    )
+}

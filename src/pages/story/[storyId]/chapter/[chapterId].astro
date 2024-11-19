@@ -4,10 +4,10 @@ import Editor from '../../../../components/Editor';
 import SideNav from '../../../../components/SideNav';
 import { supabase } from '../../../../lib/supabase';
 import Toaster from '../../../../components/Toaster';
+import { StoryContext } from '../../../../components/StoryContext';
 
 const { storyId, chapterId } = Astro.params;
 
-// Fetch the chapter and story
 const { data: chapter } = await supabase
   .from('chapters')
   .select('*, stories!inner(*)')
@@ -21,6 +21,7 @@ if (!chapter) {
 ---
 
 <Layout title={`${chapter.stories.title} - ${chapter.title}`}>
+  <StoryContext client:load storyId={storyId} />
   <div class="flex min-h-screen">
     <SideNav client:load storyId={storyId} />
     <main class="flex-1">
