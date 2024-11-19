@@ -4,6 +4,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "strict": false,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "verbatimModuleSyntax": false,
   }
 }

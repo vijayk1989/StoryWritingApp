@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/supabase';
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     const formData = await request.formData();
     const title = formData.get("title")?.toString();
@@ -9,28 +9,45 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const accessToken = cookies.get("sb-access-token");
     const refreshToken = cookies.get("sb-refresh-token");
 
+    if (!accessToken || !refreshToken) {
+      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+        status: 401
+      });
+    }
+
     // Set the session first
     await supabase.auth.setSession({
-      refresh_token: refreshToken?.value,
-      access_token: accessToken?.value,
+      refresh_token: refreshToken.value,
+      access_token: accessToken.value,
     });
 
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!title || !user) {
-      return redirect('/', 302);
+      return new Response(JSON.stringify({ error: 'Missing title or user' }), {
+        status: 400
+      });
     }
 
-    await supabase
+    const { data, error } = await supabase
       .from('stories')
       .insert([{ 
         title,
         user_id: user.id
-      }]);
+      }])
+      .select()
+      .single();
 
-    return redirect('/', 302);
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ data }), {
+      status: 200
+    });
+
   } catch (error) {
     console.error('Error creating story:', error);
-    return redirect('/', 302);
+    return new Response(JSON.stringify({ error: 'Failed to create story' }), {
+      status: 500
+    });
   }
 };
