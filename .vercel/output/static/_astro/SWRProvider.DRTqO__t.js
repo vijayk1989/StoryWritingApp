@@ -1,0 +1,1 @@
+import{j as e}from"./jsx-runtime.B-tYHWOS.js";import{S as o}from"./index.Bk4Tk5ow.js";import"./index.BCPtUIm2.js";const t=new Map;function u({children:r}){return e.jsx(o,{value:{revalidateOnFocus:!1,revalidateOnReconnect:!0,dedupingInterval:5e3,shouldRetryOnError:!0,errorRetryCount:3,keepPreviousData:!0,provider:()=>t},children:r})}export{u as default};

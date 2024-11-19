@@ -1,0 +1,32 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import Editor from '../../../../components/Editor';
+import SideNav from '../../../../components/SideNav';
+import { supabase } from '../../../../lib/supabase';
+import Toaster from '../../../../components/Toaster';
+import { StoryContext } from '../../../../components/StoryContext';
+
+const { storyId, chapterId } = Astro.params;
+
+const { data: chapter } = await supabase
+  .from('chapters')
+  .select('*, stories!inner(*)')
+  .eq('id', chapterId)
+  .eq('stories.id', storyId)
+  .single();
+
+if (!chapter) {
+  return Astro.redirect(`/story/${storyId}`);
+}
+---
+
+<Layout title={`${chapter.stories.title} - ${chapter.title}`}>
+  <StoryContext client:load storyId={storyId} />
+  <div class="flex min-h-screen">
+    <SideNav client:load storyId={storyId} />
+    <main class="flex-1">
+      <Editor client:only="react" chapterId={chapterId} />
+    </main>
+  </div>
+  <Toaster client:load />
+</Layout>

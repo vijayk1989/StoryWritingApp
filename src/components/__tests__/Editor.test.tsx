@@ -4,9 +4,9 @@ import Editor from '../Editor';
 
 describe('Editor Component', () => {
     it('renders with initial content', async () => {
-        render(<Editor />);
+        render(<Editor chapterId="123" />);
         // Wait for the content to appear
-        const content = await screen.findByText((content) => 
+        const content = await screen.findByText((content) =>
             content.includes('Start writing your story here'),
             { exact: false }
         );
@@ -14,14 +14,14 @@ describe('Editor Component', () => {
     });
 
     it('renders the BlockNoteView component', () => {
-        const { container } = render(<Editor />);
-        
+        const { container } = render(<Editor chapterId="123" />);
+
         // Check for the BlockNote container
         expect(container.querySelector('.bn-container')).toBeInTheDocument();
-        
+
         // Check for the Mantine specific class
         expect(container.querySelector('.bn-mantine')).toBeInTheDocument();
-        
+
         // Check for the editor's aria attributes
         expect(container.querySelector('[aria-autocomplete="list"]')).toBeInTheDocument();
     });

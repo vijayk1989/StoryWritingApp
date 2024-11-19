@@ -1,0 +1,48 @@
+import { s as supabase } from '../../../chunks/supabase_CfcqD-_3.mjs';
+export { renderers } from '../../../renderers.mjs';
+
+const POST = async ({ request, cookies }) => {
+  try {
+    const formData = await request.formData();
+    const title = formData.get("title")?.toString();
+    const accessToken = cookies.get("sb-access-token");
+    const refreshToken = cookies.get("sb-refresh-token");
+    if (!accessToken || !refreshToken) {
+      return new Response(JSON.stringify({ error: "Not authenticated" }), {
+        status: 401
+      });
+    }
+    await supabase.auth.setSession({
+      refresh_token: refreshToken.value,
+      access_token: accessToken.value
+    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!title || !user) {
+      return new Response(JSON.stringify({ error: "Missing title or user" }), {
+        status: 400
+      });
+    }
+    const { data, error } = await supabase.from("stories").insert([{
+      title,
+      user_id: user.id
+    }]).select().single();
+    if (error) throw error;
+    return new Response(JSON.stringify({ data }), {
+      status: 200
+    });
+  } catch (error) {
+    console.error("Error creating story:", error);
+    return new Response(JSON.stringify({ error: "Failed to create story" }), {
+      status: 500
+    });
+  }
+};
+
+const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  POST
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const page = () => _page;
+
+export { page };

@@ -1,0 +1,64 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import SideNav from '../../../components/SideNav';
+import { supabase } from '../../../lib/supabase';
+import CreateLorebookItemForm from '../../../components/CreateLorebookItemForm';
+import LorebookItemsList from '../../../components/LorebookItemsList';
+import SWRProvider from '../../../components/SWRProvider';
+import { StoryContext } from '../../../components/StoryContext';
+
+const { storyId } = Astro.params;
+
+let { data: lorebook } = await supabase
+  .from('lorebooks')
+  .select('*')
+  .eq('story_id', storyId)
+  .single();
+
+if (!lorebook) {
+  const { data: story } = await supabase
+    .from('stories')
+    .select('title')
+    .eq('id', storyId)
+    .single();
+
+  const { data: newLorebook } = await supabase
+    .from('lorebooks')
+    .insert([
+      { 
+        story_id: storyId,
+        name: `${story?.title || 'Story'} Lorebook`
+      }
+    ])
+    .select()
+    .single();
+
+  if (newLorebook) {
+    lorebook = newLorebook;
+  }
+}
+
+if (!lorebook) {
+  return Astro.redirect('/');
+}
+---
+
+<Layout title="Lorebook">
+  <StoryContext client:load storyId={storyId} />
+  <div class="flex min-h-screen">
+    <SideNav client:load storyId={storyId} />
+    <main class="flex-1 w-full lg:ml-[5%]">
+      <div class="w-[90%] sm:max-w-4xl mx-auto lg:py-8 sm:px-4">
+        <SWRProvider client:load>
+          <div class="flex flex-col mt-8 lg:mt-0">
+            <div class="pl-12 lg:pl-0">
+              <h1 class="text-2xl font-bold mb-8">{lorebook.name}</h1>
+            </div>
+            <CreateLorebookItemForm client:only="react" lorebookId={lorebook.id} />
+            <LorebookItemsList client:only="react" lorebookId={lorebook.id} />
+          </div>
+        </SWRProvider>
+      </div>
+    </main>
+  </div>
+</Layout>
