@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useLorebookStore, useLorebookItems } from '../store/useLorebookStore'
+import { useChapterStore } from '../store/useChapterStore'
 import { supabase } from '../lib/supabase'
 import useSWR from 'swr'
 
@@ -8,7 +9,12 @@ interface StoryContextProps {
 }
 
 export const StoryContext = ({ storyId }: StoryContextProps) => {
-    const { setCurrentStory } = useLorebookStore()
+    const { setCurrentStory: setLorebookStory } = useLorebookStore()
+    const {
+        setCurrentStory: setChapterStory,
+        clearStoredSummaries,
+        updateStoredSummaries
+    } = useChapterStore()
 
     // Use the hook at the component level
     const { data: lorebook } = useSWR(
@@ -27,12 +33,27 @@ export const StoryContext = ({ storyId }: StoryContextProps) => {
     useLorebookItems(lorebook?.id)
 
     useEffect(() => {
-        // Set current story in lorebook store
-        setCurrentStory(storyId)
+        const initializeStory = async () => {
+            setLorebookStory(storyId)
+            setChapterStory(storyId)
+
+            // Initialize summaries when entering a story
+            if (storyId) {
+                try {
+                    await updateStoredSummaries(storyId)
+                } catch (error) {
+                    console.error('Error initializing summaries:', error)
+                }
+            }
+        }
+
+        initializeStory()
 
         // Cleanup when leaving story context
         return () => {
-            setCurrentStory(null)
+            setLorebookStory(null)
+            setChapterStory(null)
+            clearStoredSummaries()
         }
     }, [storyId])
 

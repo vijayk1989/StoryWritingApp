@@ -93,6 +93,7 @@ const Editor = ({ chapterId }: EditorProps) => {
     const { data: chapter, error, isLoading } = useChapter(chapterId)
     const { updateChapter } = useChapterStore()
     const [isSaving, setIsSaving] = useState(false)
+    const { getPreviousChapterSummaries } = useChapterStore()
 
     // Get lorebook items for the current story
     const { lorebookItems, lorebookItemsByTag, findItemByTag } = useLorebookStore()
@@ -107,6 +108,18 @@ const Editor = ({ chapterId }: EditorProps) => {
         console.log('Hermione by name:', hermioneByName)
         console.log('Hermione by tag:', hermioneByTag)
     }, [lorebookItems, lorebookItemsByTag])
+
+    useEffect(() => {
+        if (chapter?.story_id && chapter?.chapter_number) {
+            getPreviousChapterSummaries(chapter.story_id, chapter.chapter_number)
+                .then(summaries => {
+                    console.log('Previous chapter summaries:', summaries)
+                })
+                .catch(error => {
+                    console.error('Error fetching previous chapter summaries:', error)
+                })
+        }
+    }, [chapter, getPreviousChapterSummaries])
 
     // Create editor instance after content is loaded
     const editor = useMemo(() => {

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import type { Chapter } from '../types/chapter'
 import useSWR, { mutate } from 'swr'
+import { summariesDB } from '../lib/indexedDB'
 
 // SWR fetcher functions
 const fetchChapters = async (storyId: string) => {
@@ -47,15 +48,23 @@ interface ChapterState {
     isCreating: boolean
     isSaving: boolean
     error: string | null
+    currentStoryId: string | null
+    summariesSoFar: string
     createChapter: (data: Partial<Chapter>) => Promise<void>
     updateChapter: (id: string, data: Partial<Chapter>) => Promise<void>
     deleteChapter: (id: string, storyId: string) => Promise<void>
+    setCurrentStory: (storyId: string | null) => Promise<void>
+    getPreviousChapterSummaries: (storyId: string, currentChapterNumber: number) => Promise<string>
+    updateStoredSummaries: (storyId: string) => Promise<void>
+    clearStoredSummaries: () => Promise<void>
 }
 
 export const useChapterStore = create<ChapterState>((set, get) => ({
     isCreating: false,
     isSaving: false,
     error: null,
+    currentStoryId: null,
+    summariesSoFar: '',
 
     createChapter: async (chapterData) => {
         set({ isCreating: true })
@@ -100,9 +109,14 @@ export const useChapterStore = create<ChapterState>((set, get) => ({
                 .eq('id', id)
 
             if (error) throw error
-            // Get storyId from the chapter data or fetch it
-            const storyId = chapterData.story_id // You might need to fetch this if not available
-            mutate(`chapters/${storyId}`)
+
+            // If we're updating a summary, refresh the stored summaries
+            if ('summary' in chapterData) {
+                const chapter = await fetchChapter(id)
+                await get().updateStoredSummaries(chapter.story_id)
+            }
+
+            mutate(`chapters/${chapterData.story_id}`)
         } catch (error) {
             set({ error: (error as Error).message })
             throw error
@@ -122,6 +136,87 @@ export const useChapterStore = create<ChapterState>((set, get) => ({
         } catch (error) {
             set({ error: (error as Error).message })
             throw error
+        }
+    },
+
+    setCurrentStory: async (storyId) => {
+        if (storyId !== get().currentStoryId) {
+            set({ currentStoryId: storyId })
+            if (storyId) {
+                await get().updateStoredSummaries(storyId)
+            }
+        }
+    },
+
+    // Update IndexedDB with all chapter summaries
+    updateStoredSummaries: async (storyId: string) => {
+        try {
+            const chapters = await fetchChapters(storyId)
+            if (!chapters) return
+
+            // Create array of chapter summaries
+            const summariesArray = chapters
+                .sort((a, b) => a.chapter_number - b.chapter_number)
+                .map(chapter => ({
+                    chapter_number: chapter.chapter_number,
+                    summary: chapter.summary?.trim() || ''
+                }))
+                .filter(summary => summary.summary !== '')
+
+            // Store in IndexedDB
+            await summariesDB.setSummaries(storyId, summariesArray)
+        } catch (error) {
+            console.error('Error updating stored summaries:', error)
+        }
+    },
+
+    // Get summaries for previous chapters
+    getPreviousChapterSummaries: async (storyId: string, currentChapterNumber: number) => {
+        try {
+            // First try to get from IndexedDB
+            let summariesArray = await summariesDB.getSummaries(storyId)
+
+            // If not in IndexedDB, fetch from database
+            if (!summariesArray || summariesArray.length === 0) {
+                const chapters = await fetchChapters(storyId)
+                if (!chapters) return ''
+
+                // Create array of chapter summaries
+                summariesArray = chapters
+                    .map(chapter => ({
+                        chapter_number: chapter.chapter_number,
+                        summary: chapter.summary?.trim() || ''
+                    }))
+                    .filter(summary => summary.summary !== '')
+
+                // Store for future use
+                await summariesDB.setSummaries(storyId, summariesArray)
+            }
+
+            // Get only summaries for previous chapters
+            const previousSummaries = summariesArray
+                .filter(summary => summary.chapter_number <= currentChapterNumber)
+                .sort((a, b) => a.chapter_number - b.chapter_number)
+                .map(summary => summary.summary)
+                .join(' ')
+
+            set({ summariesSoFar: previousSummaries })
+            return previousSummaries
+        } catch (error) {
+            console.error('Error getting previous chapter summaries:', error)
+            return ''
+        }
+    },
+
+    clearStoredSummaries: async () => {
+        try {
+            const storyId = get().currentStoryId
+            if (storyId) {
+                await summariesDB.clearSummaries(storyId)
+            }
+            set({ summariesSoFar: '' })
+        } catch (error) {
+            console.error('Error clearing stored summaries:', error)
         }
     }
 }))

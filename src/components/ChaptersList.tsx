@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog"
+import { mutate } from 'swr'
 
 interface ChaptersListProps {
   storyId: string
@@ -21,7 +22,7 @@ interface ChaptersListProps {
 
 export default function ChaptersList({ storyId }: ChaptersListProps) {
   const { data: chapters, error, isLoading } = useChapters(storyId)
-  const { updateChapter, deleteChapter } = useChapterStore()
+  const { updateChapter, deleteChapter, updateStoredSummaries } = useChapterStore()
   const [editingSummary, setEditingSummary] = useState<string | null>(null)
   const [chapterToDelete, setChapterToDelete] = useState<string | null>(null)
 
@@ -29,6 +30,8 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
     try {
       await updateChapter(chapterId, { summary })
       setEditingSummary(null)
+      await updateStoredSummaries(storyId)
+      mutate(`chapters/${storyId}`)
       toast.success('Summary updated')
     } catch (error) {
       toast.error('Failed to update summary')
@@ -38,6 +41,7 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
   const handleDelete = async (chapterId: string) => {
     try {
       await deleteChapter(chapterId, storyId)
+      await updateStoredSummaries(storyId)
       toast.success('Chapter deleted')
       setChapterToDelete(null)
     } catch (error) {
