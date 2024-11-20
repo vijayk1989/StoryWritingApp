@@ -18,12 +18,6 @@ export const SceneBeat = (sendToBackend: (textData: string) => Promise<Response>
                 useEffect(() => {
                     console.log('All lorebook items:', lorebookItems)
                     console.log('Lorebook items by tag:', lorebookItemsByTag)
-
-                    // Example lookups
-                    const hermioneByName = findItemByTag('Hermione Granger')
-                    const hermioneByTag = findItemByTag('Hermione')
-                    console.log('Hermione by name:', hermioneByName)
-                    console.log('Hermione by tag:', hermioneByTag)
                 }, [lorebookItems, lorebookItemsByTag])
 
                 const handleGenerateClick = async () => {

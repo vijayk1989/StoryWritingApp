@@ -3,12 +3,14 @@ import { useStoryStore } from '../store/useStoryStore'
 import useSWR from 'swr'
 import toast from 'react-hot-toast'
 import type { Story } from '../types/story'
+import { Button } from './ui/button'
+import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 export default function StoriesList() {
   const { data: stories, error, isLoading } = useSWR<Story[]>(
-    '/api/stories', 
+    '/api/stories',
     fetcher,
     {
       revalidateOnFocus: false,
@@ -56,24 +58,27 @@ export default function StoriesList() {
         </div>
       ) : (
         stories.map((story) => (
-          <div key={story.id} className="relative group">
-            <a
-              href={`/story/${story.id}`}
-              className="block p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200"
-            >
-              <h3 className="text-xl font-semibold">{story.title}</h3>
-              <p className="text-gray-400 text-sm mt-4">
-                Created {new Date(story.created_at).toLocaleDateString()}
-              </p>
+          <Card key={story.id} className="relative group">
+            <a href={`/story/${story.id}`}>
+              <CardHeader>
+                <CardTitle>{story.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Created {new Date(story.created_at).toLocaleDateString()}
+                </p>
+              </CardContent>
             </a>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => handleDelete(story.id)}
-              className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
+              className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"
               title="Delete story"
             >
-              <RiDeleteBinLine className="w-5 h-5" />
-            </button>
-          </div>
+              <RiDeleteBinLine className="h-4 w-4 text-destructive" />
+            </Button>
+          </Card>
         ))
       )}
     </div>

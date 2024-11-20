@@ -1,24 +1,24 @@
 import { create } from 'zustand'
-import { supabase } from '../lib/supabase'
 import type { Prompt, PromptMessage, CreatePromptData } from '../types/prompt'
 
 interface PromptState {
     prompts: Prompt[]
+    systemPrompts: Prompt[]
     currentPrompt: Prompt | null
     isLoading: boolean
     isCreating: boolean
     error: string | null
+    validatePromptData: (messages: PromptMessage[]) => boolean
     fetchPrompts: () => Promise<void>
     createPrompt: (data: CreatePromptData) => Promise<Prompt>
     updatePrompt: (id: string, data: Partial<CreatePromptData>) => Promise<Prompt>
     deletePrompt: (id: string) => Promise<void>
     setCurrentPrompt: (prompt: Prompt | null) => void
-    // Helper method to validate prompt structure
-    validatePromptData: (messages: PromptMessage[]) => boolean
 }
 
 export const usePromptStore = create<PromptState>((set, get) => ({
     prompts: [],
+    systemPrompts: [],
     currentPrompt: null,
     isLoading: false,
     isCreating: false,
@@ -39,46 +39,42 @@ export const usePromptStore = create<PromptState>((set, get) => ({
     fetchPrompts: async () => {
         set({ isLoading: true })
         try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error('Not authenticated')
+            const response = await fetch('/api/prompts')
+            if (!response.ok) throw new Error('Failed to fetch prompts')
+            const data = await response.json()
 
-            const { data, error } = await supabase
-                .from('prompts')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
+            const userPrompts = data.filter((p: Prompt) => p.user_id)
+            const systemPrompts = data.filter((p: Prompt) => !p.user_id)
 
-            if (error) throw error
-            set({ prompts: data || [], error: null })
+            set({
+                prompts: userPrompts,
+                systemPrompts,
+                error: null
+            })
         } catch (error) {
             set({ error: (error as Error).message })
+            throw error
         } finally {
             set({ isLoading: false })
         }
     },
 
-    createPrompt: async ({ name, prompt_data }) => {
+    createPrompt: async ({ name, prompt_data, allowed_models }) => {
         set({ isCreating: true })
         try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error('Not authenticated')
-
-            // Validate prompt data structure
             if (!get().validatePromptData(prompt_data)) {
                 throw new Error('Invalid prompt data structure')
             }
 
-            const { data, error } = await supabase
-                .from('prompts')
-                .insert([{
-                    name,
-                    prompt_data,
-                    user_id: user.id
-                }])
-                .select()
-                .single()
+            const response = await fetch('/api/prompts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, prompt_data, allowed_models })
+            })
 
-            if (error) throw error
+            if (!response.ok) throw new Error('Failed to create prompt')
+            const data = await response.json()
+
             const { prompts } = get()
             set({
                 prompts: [data, ...prompts],
@@ -94,25 +90,21 @@ export const usePromptStore = create<PromptState>((set, get) => ({
         }
     },
 
-    updatePrompt: async (id: string, { name, prompt_data }) => {
+    updatePrompt: async (id: string, { name, prompt_data, allowed_models }) => {
         try {
-            // Validate prompt data structure if it's being updated
             if (prompt_data && !get().validatePromptData(prompt_data)) {
                 throw new Error('Invalid prompt data structure')
             }
 
-            const updateData: Partial<Prompt> = {}
-            if (name) updateData.name = name
-            if (prompt_data) updateData.prompt_data = prompt_data
+            const response = await fetch(`/api/prompts/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, prompt_data, allowed_models })
+            })
 
-            const { data, error } = await supabase
-                .from('prompts')
-                .update(updateData)
-                .eq('id', id)
-                .select()
-                .single()
+            if (!response.ok) throw new Error('Failed to update prompt')
+            const data = await response.json()
 
-            if (error) throw error
             const { prompts } = get()
             set({
                 prompts: prompts.map(p => p.id === id ? data : p),
@@ -128,12 +120,12 @@ export const usePromptStore = create<PromptState>((set, get) => ({
 
     deletePrompt: async (id: string) => {
         try {
-            const { error } = await supabase
-                .from('prompts')
-                .delete()
-                .eq('id', id)
+            const response = await fetch(`/api/prompts/${id}`, {
+                method: 'DELETE'
+            })
 
-            if (error) throw error
+            if (!response.ok) throw new Error('Failed to delete prompt')
+
             const { prompts, currentPrompt } = get()
             set({
                 prompts: prompts.filter(p => p.id !== id),

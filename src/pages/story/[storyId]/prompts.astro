@@ -1,0 +1,30 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import SideNav from '../../../components/SideNav';
+import PromptsManager from '../../../components/PromptsManager';
+import { StoryContext } from '../../../components/StoryContext'; 
+import Toaster from '../../../components/Toaster';
+import { supabase } from '../../../lib/supabase';
+
+const { storyId } = Astro.params;
+
+// Only verify story ownership
+const { data: story } = await supabase
+  .from('stories')
+  .select('*')
+  .eq('id', storyId)
+  .single();
+
+if (!story) {
+  return Astro.redirect('/');
+}
+---
+
+<Layout title="Prompts">
+  <StoryContext client:load storyId={storyId} />
+  <div class="flex min-h-screen">
+    <SideNav client:load storyId={storyId} />
+    <PromptsManager client:load />
+  </div>
+  <Toaster client:load />
+</Layout>

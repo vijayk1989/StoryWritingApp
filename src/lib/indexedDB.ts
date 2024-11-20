@@ -1,6 +1,23 @@
+import { AIModel } from "@/types/ai";
+
 interface ChapterSummary {
     chapter_number: number;
     summary: string;
+}
+
+interface AISettings {
+    openai_key?: string;
+    mistral_key?: string;
+    claude_key?: string;
+    openrouter_key?: string;
+    local_url?: string;
+    preferred_vendor: 'OpenAI' | 'Mistral' | 'Claude' | 'OpenRouter' | 'Local';
+}
+
+interface VendorModels {
+    openrouter?: AIModel[];
+    local?: AIModel[];
+    lastUpdated: number;
 }
 
 interface DBSchema {
@@ -11,6 +28,14 @@ interface DBSchema {
     chapterSummaries: {
         key: string;
         value: ChapterSummary[];
+    };
+    aiSettings: {
+        key: string;
+        value: AISettings;
+    };
+    vendorModels: {
+        key: string;
+        value: VendorModels;
     };
 }
 
@@ -37,6 +62,12 @@ export class IndexedDBStore {
                 }
                 if (!db.objectStoreNames.contains('chapterSummaries')) {
                     db.createObjectStore('chapterSummaries');
+                }
+                if (!db.objectStoreNames.contains('aiSettings')) {
+                    db.createObjectStore('aiSettings');
+                }
+                if (!db.objectStoreNames.contains('vendorModels')) {
+                    db.createObjectStore('vendorModels');
                 }
             };
         });
@@ -139,7 +170,65 @@ export class IndexedDBStore {
             transaction.oncomplete = () => db.close();
         });
     }
+
+    async getAISettings(): Promise<AISettings | null> {
+        const db = await this.openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction('aiSettings', 'readonly');
+            const store = transaction.objectStore('aiSettings');
+            const request = store.get('settings');
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result || null);
+
+            transaction.oncomplete = () => db.close();
+        });
+    }
+
+    async setAISettings(settings: AISettings): Promise<void> {
+        const db = await this.openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction('aiSettings', 'readwrite');
+            const store = transaction.objectStore('aiSettings');
+            const request = store.put(settings, 'settings');
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+
+            transaction.oncomplete = () => db.close();
+        });
+    }
+
+    async getVendorModels(): Promise<VendorModels | null> {
+        const db = await this.openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction('vendorModels', 'readonly');
+            const store = transaction.objectStore('vendorModels');
+            const request = store.get('models');
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result || null);
+
+            transaction.oncomplete = () => db.close();
+        });
+    }
+
+    async setVendorModels(models: VendorModels): Promise<void> {
+        const db = await this.openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction('vendorModels', 'readwrite');
+            const store = transaction.objectStore('vendorModels');
+            const request = store.put(models, 'models');
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+
+            transaction.oncomplete = () => db.close();
+        });
+    }
 }
 
 export const lorebookDB = new IndexedDBStore('lorebook-store');
 export const summariesDB = new IndexedDBStore('summaries-store');
+export const aiSettingsDB = new IndexedDBStore('ai-settings-store');
+export const vendorModelsDB = new IndexedDBStore('vendor-models-store');
