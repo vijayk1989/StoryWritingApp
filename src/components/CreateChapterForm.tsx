@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { useChapterStore } from '../store/useChapterStore'
+import { useChapterStore, useChapters } from '../store/useChapterStore'
 import toast from 'react-hot-toast'
 import { type PartialBlock } from '@blocknote/core'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { mutate } from 'swr'
 
 interface CreateChapterFormProps {
   storyId: string
@@ -10,6 +13,7 @@ interface CreateChapterFormProps {
 export default function CreateChapterForm({ storyId }: CreateChapterFormProps) {
   const [title, setTitle] = useState('')
   const { createChapter, isCreating } = useChapterStore()
+  const { data: chapters } = useChapters(storyId)
 
   const initialContent: PartialBlock[] = [
     {
@@ -22,38 +26,68 @@ export default function CreateChapterForm({ storyId }: CreateChapterFormProps) {
     e.preventDefault()
     if (!title.trim()) return
 
+    // Calculate next chapter number
+    const nextChapterNumber = chapters && chapters.length > 0
+      ? Math.max(...chapters.map(ch => ch.chapter_number)) + 1
+      : 1
+
+    // Create optimistic chapter
+    const optimisticChapter = {
+      id: `temp-${Date.now()}`,
+      title,
+      story_id: storyId,
+      chapter_number: nextChapterNumber,
+      chapter_data: { content: initialContent },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
+    // Optimistically update UI
+    mutate(
+      `chapters/${storyId}`,
+      [...(chapters || []), optimisticChapter],
+      false
+    )
+
     try {
-      await createChapter({
+      const createdChapter = await createChapter({
         title,
         story_id: storyId,
         chapter_data: { content: initialContent }
       })
+
+      // Update the cache with the real chapter data
+      mutate(`chapters/${storyId}`)
+
       setTitle('')
       toast.success('Chapter created!')
     } catch (error) {
+      // Rollback on error
+      mutate(`chapters/${storyId}`, chapters)
       toast.error('Failed to create chapter')
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-4 items-end mb-8">
-      <div className="flex-1">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Enter chapter title"
-          className="w-full rounded-md border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-          required
-        />
+    <form onSubmit={handleSubmit} className="space-y-4 mb-8">
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <Input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter chapter title"
+            required
+          />
+        </div>
+        <Button
+          type="submit"
+          disabled={isCreating}
+          className="min-w-[140px]"
+        >
+          {isCreating ? 'Creating...' : 'Create Chapter'}
+        </Button>
       </div>
-      <button
-        type="submit"
-        disabled={isCreating}
-        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
-      >
-        {isCreating ? 'Creating...' : 'Create Chapter'}
-      </button>
     </form>
   )
 }

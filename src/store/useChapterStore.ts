@@ -83,16 +83,28 @@ export const useChapterStore = create<ChapterState>((set, get) => ({
                 ? existingChapters[0].chapter_number + 1
                 : 1
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('chapters')
                 .insert([{
                     ...chapterData,
                     chapter_number: nextChapterNumber
                 }])
+                .select()
+                .single()
 
             if (error) throw error
-            // Trigger SWR revalidation instead of managing state
-            mutate(`chapters/${chapterData.story_id}`)
+
+            // Update the cache with the real data from the server
+            mutate(
+                `chapters/${chapterData.story_id}`,
+                (chapters: Chapter[] | undefined) => {
+                    if (!chapters) return [data]
+                    return [...chapters.filter(ch => !ch.id.startsWith('temp-')), data]
+                },
+                false
+            )
+
+            return data // Return the created chapter with its real ID
         } catch (error) {
             set({ error: (error as Error).message })
             throw error

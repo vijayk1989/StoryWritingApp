@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useChapters, useChapterStore } from '../store/useChapterStore'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion'
 import { Button } from './ui/button'
+import { Textarea } from "./ui/textarea"
 import { HiPencilSquare, HiTrash } from 'react-icons/hi2'
 import toast from 'react-hot-toast'
 import {
@@ -45,15 +46,21 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
     )
 
     // Optimistically update IndexedDB
-    const updatedSummaries = previousSummaries.map(sum =>
-      sum.chapter_number === updatingChapter.chapter_number
-        ? { ...sum, summary }
-        : sum
-    )
+    const updatedSummaries = previousSummaries.length > 0
+      ? previousSummaries.map(sum =>
+        sum.chapter_number === updatingChapter.chapter_number
+          ? { ...sum, summary }
+          : sum
+      )
+      : [{ chapter_number: updatingChapter.chapter_number, summary }]
+
     await summariesDB.setSummaries(storyId, updatedSummaries)
 
     try {
       await updateChapter(chapterId, { summary })
+      // Update both caches after successful save
+      mutate(`chapters/${storyId}`)
+      await updateStoredSummaries(storyId)
       setEditingSummary(null)
       setEditingChapterId(null)
       toast.success('Summary updated')
@@ -99,7 +106,7 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
   }
 
   if (error) {
-    return <div className="text-red-500">Error: {error}</div>
+    return <div className="text-red-500">Error loading chapters</div>
   }
 
   if (chapters.length === 0) {
@@ -139,7 +146,7 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
                     }}
                     className="p-2 mr-3 text-gray-500 hover:text-red-600 cursor-pointer"
                   >
-                    <HiTrash className="h-5 w-5" />
+                    <HiTrash className="h-5 w-5" aria-label="Delete chapter" />
                   </div>
                 </div>
               </div>
@@ -147,7 +154,7 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
 
             <AccordionContent className="px-6 pb-6">
               <div className="space-y-4">
-                <textarea
+                <Textarea
                   value={
                     editingChapterId === chapter.id
                       ? editingSummary ?? ''
@@ -158,8 +165,7 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
                     setEditingChapterId(chapter.id)
                   }}
                   placeholder="Enter chapter summary..."
-                  className="w-full min-h-[100px] p-3 rounded-md border border-gray-300 
-                           focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  aria-label="Chapter summary"
                 />
                 <div className="flex justify-between gap-4">
                   <Button
