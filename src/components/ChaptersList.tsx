@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog"
 import { mutate } from 'swr'
+import { summariesDB } from '../lib/indexedDB'
 
 interface ChaptersListProps {
   storyId: string
@@ -24,27 +25,66 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
   const { data: chapters, error, isLoading } = useChapters(storyId)
   const { updateChapter, deleteChapter, updateStoredSummaries } = useChapterStore()
   const [editingSummary, setEditingSummary] = useState<string | null>(null)
+  const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
   const [chapterToDelete, setChapterToDelete] = useState<string | null>(null)
 
   const handleSaveSummary = async (chapterId: string, summary: string) => {
+    const previousChapters = chapters
+    const previousSummaries = await summariesDB.getSummaries(storyId)
+
+    const updatingChapter = chapters?.find(ch => ch.id === chapterId)
+    if (!updatingChapter) return
+
+    // Optimistically update UI
+    mutate(
+      `chapters/${storyId}`,
+      chapters?.map(ch =>
+        ch.id === chapterId ? { ...ch, summary } : ch
+      ),
+      false
+    )
+
+    // Optimistically update IndexedDB
+    const updatedSummaries = previousSummaries.map(sum =>
+      sum.chapter_number === updatingChapter.chapter_number
+        ? { ...sum, summary }
+        : sum
+    )
+    await summariesDB.setSummaries(storyId, updatedSummaries)
+
     try {
       await updateChapter(chapterId, { summary })
       setEditingSummary(null)
-      await updateStoredSummaries(storyId)
-      mutate(`chapters/${storyId}`)
+      setEditingChapterId(null)
       toast.success('Summary updated')
     } catch (error) {
+      // Rollback both UI and cache on error
+      mutate(`chapters/${storyId}`, previousChapters)
+      await summariesDB.setSummaries(storyId, previousSummaries)
       toast.error('Failed to update summary')
     }
   }
 
   const handleDelete = async (chapterId: string) => {
+    const previousChapters = chapters
+    const previousSummaries = await summariesDB.getSummaries(storyId)
+
+    // Optimistically update UI
+    mutate(
+      `chapters/${storyId}`,
+      chapters?.filter(ch => ch.id !== chapterId),
+      false
+    )
+
     try {
       await deleteChapter(chapterId, storyId)
       await updateStoredSummaries(storyId)
       toast.success('Chapter deleted')
       setChapterToDelete(null)
     } catch (error) {
+      // Rollback on error
+      mutate(`chapters/${storyId}`, previousChapters)
+      await summariesDB.setSummaries(storyId, previousSummaries)
       toast.error('Failed to delete chapter')
     }
   }
@@ -108,8 +148,15 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
             <AccordionContent className="px-6 pb-6">
               <div className="space-y-4">
                 <textarea
-                  value={editingSummary ?? chapter.summary ?? ''}
-                  onChange={(e) => setEditingSummary(e.target.value)}
+                  value={
+                    editingChapterId === chapter.id
+                      ? editingSummary ?? ''
+                      : chapter.summary ?? ''
+                  }
+                  onChange={(e) => {
+                    setEditingSummary(e.target.value)
+                    setEditingChapterId(chapter.id)
+                  }}
                   placeholder="Enter chapter summary..."
                   className="w-full min-h-[100px] p-3 rounded-md border border-gray-300 
                            focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
@@ -123,7 +170,10 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
                   </Button>
                   <Button
                     onClick={() => handleSaveSummary(chapter.id, editingSummary || '')}
-                    disabled={editingSummary === chapter.summary}
+                    disabled={
+                      editingChapterId !== chapter.id ||
+                      editingSummary === chapter.summary
+                    }
                   >
                     Save Summary
                   </Button>

@@ -55,7 +55,7 @@ interface ChapterState {
     deleteChapter: (id: string, storyId: string) => Promise<void>
     setCurrentStory: (storyId: string | null) => Promise<void>
     getPreviousChapterSummaries: (storyId: string, currentChapterNumber: number) => Promise<string>
-    updateStoredSummaries: (storyId: string) => Promise<void>
+    updateStoredSummaries: (storyId: string, optimisticData?: Chapter[]) => Promise<void>
     clearStoredSummaries: () => Promise<void>
 }
 
@@ -101,7 +101,7 @@ export const useChapterStore = create<ChapterState>((set, get) => ({
         }
     },
 
-    updateChapter: async (id: string, chapterData) => {
+    updateChapter: async (id: string, chapterData: Partial<Chapter>): Promise<void> => {
         try {
             const { error } = await supabase
                 .from('chapters')
@@ -110,20 +110,14 @@ export const useChapterStore = create<ChapterState>((set, get) => ({
 
             if (error) throw error
 
-            // If we're updating a summary, refresh the stored summaries
-            if ('summary' in chapterData) {
-                const chapter = await fetchChapter(id)
-                await get().updateStoredSummaries(chapter.story_id)
-            }
-
-            mutate(`chapters/${chapterData.story_id}`)
+            // Don't return anything to match Promise<void>
         } catch (error) {
             set({ error: (error as Error).message })
             throw error
         }
     },
 
-    deleteChapter: async (id: string, storyId: string) => {
+    deleteChapter: async (id: string, storyId: string): Promise<void> => {
         try {
             const { error } = await supabase
                 .from('chapters')
@@ -131,8 +125,8 @@ export const useChapterStore = create<ChapterState>((set, get) => ({
                 .eq('id', id)
 
             if (error) throw error
-            // Trigger SWR revalidation
-            mutate(`chapters/${storyId}`)
+
+            // Don't return anything to match Promise<void>
         } catch (error) {
             set({ error: (error as Error).message })
             throw error
@@ -149,12 +143,11 @@ export const useChapterStore = create<ChapterState>((set, get) => ({
     },
 
     // Update IndexedDB with all chapter summaries
-    updateStoredSummaries: async (storyId: string) => {
+    updateStoredSummaries: async (storyId: string, optimisticData?: Chapter[]) => {
         try {
-            const chapters = await fetchChapters(storyId)
+            const chapters = optimisticData || await fetchChapters(storyId)
             if (!chapters) return
 
-            // Create array of chapter summaries
             const summariesArray = chapters
                 .sort((a, b) => a.chapter_number - b.chapter_number)
                 .map(chapter => ({
@@ -163,7 +156,6 @@ export const useChapterStore = create<ChapterState>((set, get) => ({
                 }))
                 .filter(summary => summary.summary !== '')
 
-            // Store in IndexedDB
             await summariesDB.setSummaries(storyId, summariesArray)
         } catch (error) {
             console.error('Error updating stored summaries:', error)
