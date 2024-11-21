@@ -2,7 +2,7 @@ import type { AIModel } from '../../types/ai'
 
 export function createLocalModel(url: string): AIModel {
     return {
-        id: 'local-model',
+        id: 'local/local-model',
         name: 'Local Model',
         vendor: 'Local',
         context_length: 4096,

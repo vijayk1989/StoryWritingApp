@@ -23,12 +23,10 @@ export const useAIModelsStore = create<AIModelsState>((set, get) => ({
     fetchModels: async (force = false) => {
         set({ isLoading: true })
         try {
-            // Check cached models first
             const cachedModels = await vendorModelsDB.getVendorModels()
             const now = Date.now()
 
             if (!force && cachedModels && (now - cachedModels.lastUpdated) < CACHE_DURATION) {
-                // Use cached models if they're not too old
                 const allModels = [
                     ...(cachedModels.openrouter || []),
                     ...(cachedModels.local || [])
@@ -41,7 +39,6 @@ export const useAIModelsStore = create<AIModelsState>((set, get) => ({
                 return
             }
 
-            // If no cache, cache is old, or force refresh, fetch fresh data
             const settings = await aiSettingsDB.getAISettings()
             if (!settings) {
                 set({ models: [], error: null })
@@ -61,7 +58,6 @@ export const useAIModelsStore = create<AIModelsState>((set, get) => ({
 
             const { models: newModels } = await response.json()
 
-            // Cache the new models
             await vendorModelsDB.setVendorModels({
                 openrouter: newModels.filter(m => m.vendor === 'OpenRouter'),
                 local: newModels.filter(m => m.vendor === 'Local'),

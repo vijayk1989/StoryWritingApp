@@ -13,14 +13,17 @@ import {
 } from 'react-icons/hi'
 import toast from 'react-hot-toast'
 import { useAIModelsStore } from '../store/useAIModelsStore'
-import { Checkbox } from './ui/checkbox'
 import { Badge } from './ui/badge'
-import { cn } from '../lib/utils'
+import { AIModel } from '@/types/ai'
 
 interface PromptFormProps {
     prompt?: Prompt | null
     onSave?: () => void
     onCancel?: () => void
+}
+
+interface ModelsByVendor {
+    [key: string]: AIModel[]
 }
 
 export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps) {
@@ -114,10 +117,33 @@ export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps
     }
 
     const handleModelSelect = (modelId: string) => {
-        if (!selectedModels.includes(modelId)) {
-            setSelectedModels([...selectedModels, modelId])
+        const model = models.find(m => m.id === modelId)
+        if (model) {
+            const fullId = `${model.vendor.toLowerCase()}/${model.id}`
+            if (!selectedModels.includes(fullId)) {
+                setSelectedModels([...selectedModels, fullId])
+            }
         }
     }
+
+    const getModelDisplayName = (fullId: string): string => {
+        const [vendor, modelId] = fullId.split('/')
+        const model = models.find(m =>
+            m.vendor.toLowerCase() === vendor &&
+            m.id === modelId
+        )
+        return model ? `${model.name}` : fullId
+    }
+
+    // Group models by vendor
+    const modelsByVendor = models.reduce((acc: ModelsByVendor, model) => {
+        const vendor = model.vendor
+        if (!acc[vendor]) {
+            acc[vendor] = []
+        }
+        acc[vendor].push(model)
+        return acc
+    }, {})
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -232,26 +258,23 @@ export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps
                 <h3 className="font-medium mb-4">Available Models</h3>
 
                 <div className="flex flex-wrap gap-2 mb-4">
-                    {selectedModels.map((modelId) => {
-                        const model = models.find(m => m.id === modelId)
-                        return (
-                            <Badge
-                                key={modelId}
-                                variant="secondary"
-                                className="flex items-center gap-1 px-3 py-1"
+                    {selectedModels.map((fullId) => (
+                        <Badge
+                            key={fullId}
+                            variant="secondary"
+                            className="flex items-center gap-1 px-3 py-1"
+                        >
+                            {getModelDisplayName(fullId)}
+                            <button
+                                type="button"
+                                onClick={() => setSelectedModels(selectedModels.filter(id => id !== fullId))}
+                                className="ml-1 hover:text-red-500"
+                                disabled={isSystemPrompt}
                             >
-                                {model?.name || modelId}
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedModels(selectedModels.filter(id => id !== modelId))}
-                                    className="ml-1 hover:text-red-500"
-                                    disabled={isSystemPrompt}
-                                >
-                                    ×
-                                </button>
-                            </Badge>
-                        )
-                    })}
+                                ×
+                            </button>
+                        </Badge>
+                    ))}
                 </div>
 
                 <Select
@@ -262,14 +285,21 @@ export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps
                         <SelectValue placeholder="Select a model" />
                     </SelectTrigger>
                     <SelectContent>
-                        {models.map((model) => (
-                            <SelectItem
-                                key={model.id}
-                                value={model.id}
-                                disabled={selectedModels.includes(model.id)}
-                            >
-                                {model.name} ({model.context_length} tokens)
-                            </SelectItem>
+                        {Object.entries(modelsByVendor).map(([vendor, vendorModels]) => (
+                            <div key={vendor}>
+                                <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
+                                    {vendor}
+                                </div>
+                                {vendorModels.map((model) => (
+                                    <SelectItem
+                                        key={model.id}
+                                        value={model.id}
+                                        disabled={selectedModels.includes(`${vendor.toLowerCase()}/${model.id}`)}
+                                    >
+                                        {model.name} ({model.context_length} tokens)
+                                    </SelectItem>
+                                ))}
+                            </div>
                         ))}
                     </SelectContent>
                 </Select>
