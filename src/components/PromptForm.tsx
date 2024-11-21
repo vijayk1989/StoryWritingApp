@@ -26,6 +26,16 @@ interface ModelsByVendor {
     [key: string]: AIModel[]
 }
 
+const promptTypes = [
+    { value: 'scene_beat', label: 'Scene Beat' },
+    { value: 'character', label: 'Character' },
+    { value: 'world_building', label: 'World Building' },
+    { value: 'dialogue', label: 'Dialogue' },
+    { value: 'description', label: 'Description' },
+    { value: 'gen_summary', label: 'Generate Summary' },
+    { value: 'other', label: 'Other' }
+]
+
 export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps) {
     const [name, setName] = useState(prompt?.name || '')
     const [messages, setMessages] = useState<PromptMessage[]>(
@@ -37,6 +47,7 @@ export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps
     const [isUpdating, setIsUpdating] = useState(false)
     const { createPrompt, updatePrompt, isCreating } = usePromptStore()
     const { models, fetchModels, isLoading: isLoadingModels } = useAIModelsStore()
+    const [promptType, setPromptType] = useState(prompt?.prompt_type || 'scene_beat')
 
     useEffect(() => {
         fetchModels()
@@ -97,7 +108,8 @@ export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps
             const promptData = {
                 name,
                 prompt_data: messages,
-                allowed_models: selectedModels.join(',')
+                allowed_models: selectedModels.join(','),
+                prompt_type: promptType
             }
 
             if (prompt) {
@@ -339,6 +351,26 @@ export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps
                                     ))}
                                 </div>
                             ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div className="border-t pt-6">
+                <h3 className="font-medium mb-4">Prompt Type</h3>
+                <Select
+                    value={promptType}
+                    onValueChange={setPromptType}
+                    disabled={isSystemPrompt}
+                >
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select prompt type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {promptTypes.map(type => (
+                            <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
             </div>

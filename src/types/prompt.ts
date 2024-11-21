@@ -4,6 +4,7 @@ export interface Prompt {
     name: string
     prompt_data: PromptMessage[],
     allowed_models: string,
+    prompt_type: string,
     created_at: string
 }
 
@@ -16,5 +17,6 @@ export interface PromptMessage {
 export interface CreatePromptData {
     name: string
     prompt_data: PromptMessage[],
-    allowed_models: string
+    allowed_models: string,
+    prompt_type: string
 }

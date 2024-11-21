@@ -17,6 +17,11 @@ import {
 } from "./ui/alert-dialog"
 import { mutate } from 'swr'
 import { summariesDB } from '../lib/indexedDB'
+import { generateCompletion } from '../lib/ai/generation'
+import { Prompt } from '@/types/prompt'
+import { usePrompts } from '@/hooks/usePrompts'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, SelectLabel } from './ui/select'
+import { handleSummaryStream } from '../lib/ai/summaryStreamUtils'
 
 interface ChaptersListProps {
   storyId: string
@@ -28,6 +33,9 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
   const [editingSummary, setEditingSummary] = useState<string | null>(null)
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
   const [chapterToDelete, setChapterToDelete] = useState<string | null>(null)
+  const { prompts, systemPrompts } = usePrompts()
+  const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null)
+  const [selectedModel, setSelectedModel] = useState<string>('')
 
   const handleSaveSummary = async (chapterId: string, summary: string) => {
     const previousChapters = chapters
@@ -97,9 +105,59 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
   }
 
   const handleGenerateSummary = async (chapterId: string) => {
-    // TODO: Implement AI summary generation
-    toast.success('Summary generation coming soon!')
-  }
+    const chapter = chapters?.find(ch => ch.id === chapterId);
+    if (!chapter || !selectedPrompt || !selectedModel) {
+      toast.error('Please select a prompt and model first');
+      return;
+    }
+
+    try {
+      // Extract scene beats from chapter content
+      const sceneBeatContent = chapter.chapter_data.content
+        .filter(block => block.type === 'sceneBeat')
+        .map(block => block.content
+          .map(content => content.text)
+          .join(' ')
+        )
+        .join('\n');
+
+      // Get the vendor and model ID from the selected model
+      const [vendor, ...modelParts] = selectedModel.split('/')
+      const modelId = vendor === 'openrouter' ? modelParts.join('/') : modelParts[0]
+
+      // Replace placeholder in prompt messages
+      const messages = selectedPrompt.prompt_data.map(msg => ({
+        ...msg,
+        content: msg.content.replace('{{chapter_content}}', sceneBeatContent)
+      }));
+
+      const response = await generateCompletion({
+        messages,
+        model: modelId,
+        vendor,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 350
+      });
+
+      await handleSummaryStream(response, {
+        maxWords: 500,
+        onContent: (content) => {
+          setEditingSummary(content);
+          setEditingChapterId(chapterId);
+        },
+        onStatus: (status) => {
+          // Do nothing
+        }
+      });
+
+      toast.success('Summary generated successfully');
+
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      toast.error('Failed to generate summary');
+    }
+  };
 
   if (isLoading) {
     return <div className="text-center py-8">Loading chapters...</div>
@@ -167,13 +225,74 @@ export default function ChaptersList({ storyId }: ChaptersListProps) {
                   placeholder="Enter chapter summary..."
                   aria-label="Chapter summary"
                 />
-                <div className="flex justify-between gap-4">
+                <div className="flex items-center gap-2">
                   <Button
                     onClick={() => handleGenerateSummary(chapter.id)}
-                    variant="outline"
+                    disabled={!selectedPrompt || !selectedModel}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-[13px] font-medium text-gray-600 
+                              bg-white border border-gray-200 rounded-md 
+                              hover:bg-gray-50 hover:border-gray-300 
+                              disabled:opacity-50 disabled:cursor-not-allowed
+                              transition-all duration-200"
                   >
                     Generate Summary
                   </Button>
+
+                  <Select
+                    value={selectedPrompt?.id || ''}
+                    onValueChange={(value) => {
+                      const prompt = [...prompts, ...systemPrompts].find(p => p.id === value)
+                      setSelectedPrompt(prompt || null)
+                      setSelectedModel('')
+                    }}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select Prompt" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>System Prompts</SelectLabel>
+                        {systemPrompts
+                          .filter(p => p.prompt_type === 'gen_summary')
+                          .map(prompt => (
+                            <SelectItem key={prompt.id} value={prompt.id}>
+                              {prompt.name}
+                            </SelectItem>
+                          ))}
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel>User Prompts</SelectLabel>
+                        {prompts
+                          .filter(p => p.prompt_type === 'gen_summary')
+                          .map(prompt => (
+                            <SelectItem key={prompt.id} value={prompt.id}>
+                              {prompt.name}
+                            </SelectItem>
+                          ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+
+                  {selectedPrompt && (
+                    <Select
+                      value={selectedModel}
+                      onValueChange={setSelectedModel}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select Model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedPrompt.allowed_models.split(',').map(model => (
+                          <SelectItem key={model} value={model}>
+                            {model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  <div className="flex-1" /> {/* Spacer */}
+
                   <Button
                     onClick={() => handleSaveSummary(chapter.id, editingSummary || '')}
                     disabled={
