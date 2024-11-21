@@ -52,38 +52,8 @@ const sendToBackend = async (textData: string) => {
     }
 };
 
-// Our schema with block specs, which contain the configs and implementations for blocks
-// that we want our editor to use.
-const schema = BlockNoteSchema.create({
-    blockSpecs: {
-        // Adds all default blocks.
-        ...defaultBlockSpecs,
-        // Adds the Scene Beat block.
-        sceneBeat: SceneBeat(sendToBackend),
-    },
-});
-
 // Slash menu item to insert an Alert block
-const insertSceneBeat = (editor: typeof schema.BlockNoteEditor) => ({
-    title: 'Scene Beat',
-    onItemClick: () => {
-        insertOrUpdateBlock(editor, {
-            type: 'sceneBeat',
-        });
-    },
-    aliases: [
-        'sceneBeat',
-        'notification',
-        'emphasize',
-        'warning',
-        'error',
-        'info',
-        'success',
-    ],
-    group: 'Scene Beat',
-    icon: <RiAlertFill />,
-    key: 'sceneBeat',
-});
+
 
 interface EditorProps {
     chapterId: string;
@@ -120,6 +90,36 @@ const Editor = ({ chapterId }: EditorProps) => {
                 })
         }
     }, [chapter, getPreviousChapterSummaries])
+
+    const schema = BlockNoteSchema.create({
+        blockSpecs: {
+            // Adds all default blocks.
+            ...defaultBlockSpecs,
+            // Adds the Scene Beat block.
+            sceneBeat: SceneBeat(chapter?.story_id, chapter?.chapter_number),
+        },
+    });
+
+    const insertSceneBeat = (editor: typeof schema.BlockNoteEditor) => ({
+        title: 'Scene Beat',
+        onItemClick: () => {
+            insertOrUpdateBlock(editor, {
+                type: 'sceneBeat',
+            });
+        },
+        aliases: [
+            'sceneBeat',
+            'notification',
+            'emphasize',
+            'warning',
+            'error',
+            'info',
+            'success',
+        ],
+        group: 'Scene Beat',
+        icon: <RiAlertFill />,
+        key: 'sceneBeat',
+    });
 
     // Create editor instance after content is loaded
     const editor = useMemo(() => {

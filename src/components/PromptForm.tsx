@@ -117,6 +117,14 @@ export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps
     }
 
     const handleModelSelect = (modelId: string) => {
+        if (modelId === 'local') {
+            const fullId = 'local/local'
+            if (!selectedModels.includes(fullId)) {
+                setSelectedModels([...selectedModels, fullId])
+            }
+            return
+        }
+
         const model = models.find(m => m.id === modelId)
         if (model) {
             const fullId = `${model.vendor.toLowerCase()}/${model.id}`
@@ -127,6 +135,10 @@ export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps
     }
 
     const getModelDisplayName = (fullId: string): string => {
+        if (fullId === 'local/local') {
+            return 'Local Model'
+        }
+
         const [vendor, modelId] = fullId.split('/')
         const model = models.find(m =>
             m.vendor.toLowerCase() === vendor &&
@@ -135,15 +147,24 @@ export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps
         return model ? `${model.name}` : fullId
     }
 
-    // Group models by vendor
-    const modelsByVendor = models.reduce((acc: ModelsByVendor, model) => {
+    // Group models by vendor and add Local option
+    const modelsByVendor: ModelsByVendor = models.reduce((acc: ModelsByVendor, model) => {
         const vendor = model.vendor
         if (!acc[vendor]) {
             acc[vendor] = []
         }
         acc[vendor].push(model)
         return acc
-    }, {})
+    }, {
+        'Local': [{
+            id: 'local',
+            name: 'Local Model',
+            vendor: 'Local',
+            description: 'Local LLM running on your machine',
+            context_length: 4096,
+            pricing: { prompt: '0', completion: '0' }
+        }]
+    } as ModelsByVendor)
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -285,22 +306,39 @@ export default function PromptForm({ prompt, onSave, onCancel }: PromptFormProps
                         <SelectValue placeholder="Select a model" />
                     </SelectTrigger>
                     <SelectContent>
-                        {Object.entries(modelsByVendor).map(([vendor, vendorModels]) => (
-                            <div key={vendor}>
-                                <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
-                                    {vendor}
-                                </div>
-                                {vendorModels.map((model) => (
-                                    <SelectItem
-                                        key={model.id}
-                                        value={model.id}
-                                        disabled={selectedModels.includes(`${vendor.toLowerCase()}/${model.id}`)}
-                                    >
-                                        {model.name} ({model.context_length} tokens)
-                                    </SelectItem>
-                                ))}
+                        {/* Show Local first */}
+                        <div>
+                            <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
+                                Local
                             </div>
-                        ))}
+                            <SelectItem
+                                key="local"
+                                value="local"
+                                disabled={selectedModels.includes('local/local')}
+                            >
+                                Local Model (4096 tokens)
+                            </SelectItem>
+                        </div>
+
+                        {/* Then show other vendors */}
+                        {Object.entries(modelsByVendor)
+                            .filter(([vendor]) => vendor !== 'Local') // Skip Local since we already showed it
+                            .map(([vendor, vendorModels]) => (
+                                <div key={vendor}>
+                                    <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
+                                        {vendor}
+                                    </div>
+                                    {vendorModels.map((model) => (
+                                        <SelectItem
+                                            key={model.id}
+                                            value={model.id}
+                                            disabled={selectedModels.includes(`${vendor.toLowerCase()}/${model.id}`)}
+                                        >
+                                            {model.name} ({model.context_length} tokens)
+                                        </SelectItem>
+                                    ))}
+                                </div>
+                            ))}
                     </SelectContent>
                 </Select>
             </div>
