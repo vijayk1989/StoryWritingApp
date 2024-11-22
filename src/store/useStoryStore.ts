@@ -30,20 +30,43 @@ export const useStory = (storyId: string) => {
 
 interface StoryState {
     isCreating: boolean
+    isUpdating: boolean
     error: string | null
-    createStory: (title: string) => Promise<void>
+    createStory: (title: string, language: string, author: string) => Promise<{
+        id: string;
+        title: string;
+        language: string;
+        author: string;
+        created_at: string;
+        user_id: string;
+    }>
+    updateStory: (id: string, data: {
+        title: string;
+        language: string;
+        author: string;
+    }) => Promise<{
+        id: string;
+        title: string;
+        language: string;
+        author: string;
+        created_at: string;
+        user_id: string;
+    }>
     deleteStory: (id: string) => Promise<void>
 }
 
 export const useStoryStore = create<StoryState>((set) => ({
     isCreating: false,
+    isUpdating: false,
     error: null,
 
-    createStory: async (title: string) => {
+    createStory: async (title: string, language: string, author: string) => {
         set({ isCreating: true })
         try {
             const formData = new FormData()
             formData.append('title', title)
+            formData.append('language', language)
+            formData.append('author', author)
 
             const response = await fetch('/api/stories/create', {
                 method: 'POST',
@@ -55,13 +78,44 @@ export const useStoryStore = create<StoryState>((set) => ({
                 throw new Error(error.message || 'Failed to create story')
             }
 
-            // Revalidate the stories list
+            const story = await response.json()
             await mutate('/api/stories')
+            return story
         } catch (error) {
             set({ error: (error as Error).message })
             throw error
         } finally {
             set({ isCreating: false })
+        }
+    },
+
+    updateStory: async (id: string, { title, language, author }) => {
+        set({ isUpdating: true })
+        try {
+            const formData = new FormData()
+            formData.append('title', title)
+            formData.append('language', language)
+            formData.append('author', author)
+
+            const response = await fetch(`/api/stories/${id}/update`, {
+                method: 'POST',
+                body: formData
+            })
+
+            if (!response.ok) {
+                const error = await response.json()
+                throw new Error(error.message || 'Failed to update story')
+            }
+
+            const story = await response.json()
+            await mutate('/api/stories')
+            await mutate(`/api/stories/${id}`)
+            return story
+        } catch (error) {
+            set({ error: (error as Error).message })
+            throw error
+        } finally {
+            set({ isUpdating: false })
         }
     },
 
@@ -75,7 +129,6 @@ export const useStoryStore = create<StoryState>((set) => ({
                 throw new Error('Failed to delete story')
             }
 
-            // Revalidate the stories list
             await mutate('/api/stories')
         } catch (error) {
             set({ error: (error as Error).message })

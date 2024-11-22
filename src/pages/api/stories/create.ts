@@ -5,6 +5,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     const formData = await request.formData();
     const title = formData.get("title")?.toString();
+    const language = formData.get("language")?.toString() || "English";
+    const author = formData.get("author")?.toString();
 
     const accessToken = cookies.get("sb-access-token");
     const refreshToken = cookies.get("sb-refresh-token");
@@ -31,8 +33,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const { data, error } = await supabase
       .from('stories')
-      .insert([{ 
+      .insert([{
         title,
+        language,
+        author,
         user_id: user.id
       }])
       .select()
@@ -40,7 +44,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (error) throw error;
 
-    return new Response(JSON.stringify({ data }), {
+    return new Response(JSON.stringify(data), {
       status: 200
     });
 

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useLorebookStore, useLorebookItems } from '../store/useLorebookStore'
 import { useChapterStore } from '../store/useChapterStore'
 import { supabase } from '../lib/supabase'
+import { storySettingsDB } from '../lib/indexedDB'
 import useSWR from 'swr'
 
 interface StoryContextProps {
@@ -36,6 +37,22 @@ export const StoryContext = ({ storyId }: StoryContextProps) => {
         const initializeStory = async () => {
             setLorebookStory(storyId)
             setChapterStory(storyId)
+
+            // Load story settings
+            if (storyId) {
+                try {
+                    const settings = await storySettingsDB.getStorySettings(storyId)
+                    if (!settings) {
+                        // Initialize with defaults if not found
+                        await storySettingsDB.setStorySettings(storyId, {
+                            language: 'English',
+                            author: ''
+                        })
+                    }
+                } catch (error) {
+                    console.error('Error loading story settings:', error)
+                }
+            }
 
             // Initialize summaries when entering a story
             if (storyId) {

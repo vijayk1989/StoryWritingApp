@@ -1,52 +1,76 @@
-CREATE TABLE stories (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    title TEXT NOT NULL,
-    synopsis TEXT,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+-- Users table (auth.users is managed by Supabase Auth)
 
-CREATE TABLE chapters (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    title TEXT NOT NULL,
-    summary TEXT,
-    chapter_number INT NOT NULL,
-    story_id UUID REFERENCES stories(id) ON DELETE CASCADE,
-    chapter_data JSONB,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    UNIQUE (story_id, chapter_number)
-);
+create table stories (
+    id uuid not null default gen_random_uuid (),
+    title text not null,
+    user_id uuid null,
+    created_at timestamp with time zone null default now(),
+    language text not null default 'English'::text,
+    author text null,
+    constraint stories_pkey primary key (id),
+    constraint stories_user_id_fkey foreign key (user_id) references auth.users (id) on delete cascade
+  );
 
-CREATE TABLE ai_settings (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    ai_host TEXT CHECK (ai_host IN ('Open Router', 'Open AI', 'Mistral', 'Local', 'Claude')),
-    api_key TEXT,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+create index if not exists idx_stories_user_id on public.stories using btree (user_id) tablespace pg_default;
+-- Chapters table
+create table chapters (
+    id uuid not null default gen_random_uuid (),
+    title text not null,
+    summary text null,
+    chapter_number integer not null,
+    story_id uuid null,
+    chapter_data jsonb null,
+    created_at timestamp with time zone null default now(),
+    constraint chapters_pkey primary key (id),
+    constraint chapters_story_id_chapter_number_key unique (story_id, chapter_number),
+    constraint chapters_story_id_fkey foreign key (story_id) references stories (id) on delete cascade
+  )
 
-CREATE TABLE prompts (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NULL,
-    name TEXT NOT NULL,
-    prompt_data JSONB,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+create index if not exists idx_chapters_story_id on public.chapters using btree (story_id) tablespace pg_default;
 
-CREATE TABLE lorebooks (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL,
-    story_id UUID UNIQUE REFERENCES stories(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+-- Lorebooks table
+create table lorebooks (
+    id uuid not null default gen_random_uuid (),
+    name text not null,
+    story_id uuid null,
+    created_at timestamp with time zone null default now(),
+    constraint lorebooks_pkey primary key (id),
+    constraint lorebooks_story_id_key unique (story_id),
+    constraint lorebooks_story_id_fkey foreign key (story_id) references stories (id) on delete cascade
+  )
 
+-- Lorebook Items table
+create table lorebook_items (
+    id uuid not null default gen_random_uuid (),
+    name text not null,
+    tags text null,
+    classification text null,
+    lore_type text null,
+    description text null,
+    lorebook_id uuid null,
+    created_at timestamp with time zone null default now(),
+    constraint lorebook_items_pkey primary key (id),
+    constraint lorebook_items_lorebook_id_fkey foreign key (lorebook_id) references lorebooks (id) on delete cascade,
+    constraint lorebook_items_classification_check check (
+      (
+        classification = any (
+          array['Character'::text, 'Item'::text, 'Location'::text]
+        )
+      )
+    )
+  )
 
-CREATE TABLE lorebook_items (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL,
-    tags TEXT,  -- comma-separated list of tags
-    classification TEXT CHECK (classification IN ('Character', 'Item', 'Location')),
-    lore_type TEXT,
-    lorebook_id UUID REFERENCES lorebooks(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+create index if not exists idx_lorebook_items_lorebook_id on public.lorebook_items using btree (lorebook_id) tablespace pg_default;
+
+-- Prompts table
+create table prompts (
+    id uuid not null default gen_random_uuid (),
+    user_id uuid null,
+    name text not null,
+    prompt_data jsonb null,
+    created_at timestamp with time zone null default now(),
+    allowed_models text null,
+    prompt_type text null default 'scene_beat'::text,
+    constraint prompts_pkey primary key (id),
+    constraint prompts_user_id_fkey foreign key (user_id) references auth.users (id) on delete cascade
+  )
