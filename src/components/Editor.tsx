@@ -21,6 +21,7 @@ import { useLorebookStore } from '../store/useLorebookStore';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { POVSelector } from './POVSelector'
+import { povSettingsDB } from '@/lib/indexedDB';
 
 const sendToBackend = async (textData: string) => {
     try {
@@ -161,11 +162,18 @@ const Editor = ({ chapterId }: EditorProps) => {
 
         setIsSaving(true)
         try {
+            // Get current POV settings from IndexedDB
+            const povSettings = await povSettingsDB.getPOVSettings(chapterId)
+
+            // Save both editor content and POV settings
             await updateChapter(chapterId, {
                 chapter_data: {
                     content: editor.document
-                }
+                },
+                pov_type: povSettings?.pov_type || "Third Person Omniscient",
+                pov_character: povSettings?.pov_character || ""
             })
+
             toast.success('Chapter saved successfully')
         } catch (error) {
             console.error('Error saving chapter:', error)
