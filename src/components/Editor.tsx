@@ -1,7 +1,6 @@
 import {
     BlockNoteEditor,
     BlockNoteSchema,
-    PartialBlock,
     defaultBlockSpecs,
     filterSuggestionItems,
     insertOrUpdateBlock,
@@ -13,7 +12,7 @@ import {
     SuggestionMenuController,
     getDefaultReactSlashMenuItems,
 } from '@blocknote/react';
-import { RiAlertFill } from 'react-icons/ri';
+import { HiOutlineBookOpen } from 'react-icons/hi';
 import { SceneBeat } from './SceneBeat';
 import { useMemo, useState, useEffect } from 'react';
 import { useChapter, useChapterStore } from '../store/useChapterStore';
@@ -121,7 +120,7 @@ const Editor = ({ chapterId }: EditorProps) => {
             'success',
         ],
         group: 'Scene Beat',
-        icon: <RiAlertFill />,
+        icon: <HiOutlineBookOpen />,
         key: 'sceneBeat',
     });
 
