@@ -15,3 +15,11 @@ export interface LorebookItem {
     lorebook_id: string
     created_at: string
 }
+
+export interface SimplifiedLorebookItem {
+    name: string
+    tags: string | string[]
+    classification: string
+    lore_type: string
+    description: string
+}

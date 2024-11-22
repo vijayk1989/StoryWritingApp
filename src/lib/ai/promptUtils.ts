@@ -1,5 +1,6 @@
 import type { PromptMessage } from '../../types/prompt'
 import type { LorebookItem } from '../../types/lorebook'
+import { povSettingsDB } from '../../lib/indexedDB'
 
 const MAX_PREVIOUS_WORDS = 1000
 
@@ -8,6 +9,8 @@ interface PromptContext {
     summariesSoFar: string
     previousText: string
     sceneBeat: string
+    povType: string
+    povCharacter: string
 }
 
 export function formatPromptMessages(
@@ -16,16 +19,12 @@ export function formatPromptMessages(
 ): PromptMessage[] {
     return promptTemplate.map(msg => {
         let content = msg.content
-
-        // Remove comments
         content = content.replace(/\/\*.*?\*\//gs, '')
-
-        // Replace placeholders
         content = content
             .replace('{{lorebook_data}}', formatLorebookData(context.lorebookItems))
             .replace('{{summaries}}', context.summariesSoFar)
             .replace('{{previous_words}}', getLastNWords(context.previousText, MAX_PREVIOUS_WORDS))
-            .replace('{{pov}}', 'Third Person Omniscient')
+            .replace('{{pov}}', context.povCharacter ? `${context.povType} (${context.povCharacter})` : context.povType)
             .replace('{{scenebeat}}', context.sceneBeat)
 
         return {

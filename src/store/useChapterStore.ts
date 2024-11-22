@@ -36,11 +36,16 @@ const fetchChapter = async (chapterId: string) => {
     return data
 }
 
-// Add a custom hook for single chapter
+// Modify the custom hook for single chapter
 export const useChapter = (chapterId: string) => {
     return useSWR(
         chapterId ? `chapter/${chapterId}` : null,
-        () => fetchChapter(chapterId)
+        () => fetchChapter(chapterId),
+        {
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+            revalidateIfStale: false
+        }
     )
 }
 
@@ -57,6 +62,8 @@ interface ChapterState {
     getPreviousChapterSummaries: (storyId: string, currentChapterNumber: number) => Promise<string>
     updateStoredSummaries: (storyId: string, optimisticData?: Chapter[]) => Promise<void>
     clearStoredSummaries: () => Promise<void>
+    updatePOVType: (id: string, povType: string) => Promise<void>
+    updatePOVCharacter: (id: string, povCharacter: string) => Promise<void>
 }
 
 export const useChapterStore = create<ChapterState>((set, get) => ({
@@ -222,5 +229,63 @@ export const useChapterStore = create<ChapterState>((set, get) => ({
         } catch (error) {
             console.error('Error clearing stored summaries:', error)
         }
-    }
+    },
+
+    updatePOVType: async (id: string, povType: string): Promise<void> => {
+        try {
+            // Update all relevant cache keys
+            mutate(
+                `chapter/${id}`,
+                (chapter: Chapter | undefined) => {
+                    if (!chapter) return chapter
+                    return { ...chapter, pov_type: povType }
+                },
+                {
+                    revalidate: false,
+                    populateCache: true
+                }
+            )
+
+            const { error } = await supabase
+                .from('chapters')
+                .update({ pov_type: povType })
+                .eq('id', id)
+
+            if (error) throw error
+        } catch (error) {
+            // Revert the cache if there was an error
+            mutate(`chapter/${id}`)
+            set({ error: (error as Error).message })
+            throw error
+        }
+    },
+
+    updatePOVCharacter: async (id: string, povCharacter: string): Promise<void> => {
+        try {
+            // Update all relevant cache keys
+            mutate(
+                `chapter/${id}`,
+                (chapter: Chapter | undefined) => {
+                    if (!chapter) return chapter
+                    return { ...chapter, pov_character: povCharacter }
+                },
+                {
+                    revalidate: false,
+                    populateCache: true
+                }
+            )
+
+            const { error } = await supabase
+                .from('chapters')
+                .update({ pov_character: povCharacter })
+                .eq('id', id)
+
+            if (error) throw error
+        } catch (error) {
+            // Revert the cache if there was an error
+            mutate(`chapter/${id}`)
+            set({ error: (error as Error).message })
+            throw error
+        }
+    },
 }))

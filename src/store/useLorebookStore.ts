@@ -60,6 +60,7 @@ interface LorebookState {
     updateLorebookItem: (id: string, data: Partial<LorebookItem>) => Promise<void>
     deleteLorebookItem: (id: string, lorebookId: string) => Promise<void>
     findItemByTag: (tag: string) => SimplifiedLorebookItem | undefined
+    getCharactersByStoryId: (storyId: string) => Promise<SimplifiedLorebookItem[]>
 }
 
 // Helper function to convert array to tag-based map
@@ -244,6 +245,38 @@ export const useLorebookStore = create<LorebookState>((set, get) => ({
     findItemByTag: (tag: string) => {
         const normalizedTag = tag.toLowerCase().trim()
         return get().lorebookItemsByTag[normalizedTag]
+    },
+
+    getCharactersByStoryId: async (storyId: string) => {
+        try {
+            // First try to get the lorebook ID
+            const { data: lorebook } = await supabase
+                .from('lorebooks')
+                .select('id')
+                .eq('story_id', storyId)
+                .single()
+
+            if (!lorebook) return []
+
+            // Try to get from IndexedDB first
+            const cachedItems = await lorebookDB.getItems(storyId)
+            let items: LorebookItem[] = []
+
+            if (cachedItems?.length > 0) {
+                items = cachedItems
+            } else {
+                // If not in cache, fetch from DB
+                items = await fetchLorebookItems(lorebook.id)
+            }
+
+            // Filter and simplify character items
+            return items
+                .filter(item => item.classification === 'Character')
+                .map(simplifyLorebookItem)
+        } catch (error) {
+            console.error('Error fetching characters:', error)
+            return []
+        }
     }
 }))
 

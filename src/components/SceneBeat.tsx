@@ -8,9 +8,10 @@ import { usePrompts } from '@/hooks/usePrompts';
 import { Prompt } from '@/types/prompt';
 import { useChapterStore } from '@/store/useChapterStore';
 import { handleAIStream } from '../lib/ai/streamUtils';
+import { povSettingsDB } from '@/lib/indexedDB';
 
 // The Scene Beat block.
-export const SceneBeat = (storyId: string | undefined, chapter_number: number) =>
+export const SceneBeat = (storyId: string | undefined, chapter_number: number, chapterId: string) =>
     createReactBlockSpec(
         {
             type: 'sceneBeat',
@@ -50,6 +51,11 @@ export const SceneBeat = (storyId: string | undefined, chapter_number: number) =
                         console.error('Please select a prompt and model first')
                         return
                     }
+
+                    // Get POV settings first
+                    const povSettings = await povSettingsDB.getPOVSettings(chapterId)
+                    const povType = povSettings?.pov_type || "Third Person Omniscient"
+                    const povCharacter = povSettings?.pov_character || ""
 
                     // Split the full model path and extract the actual model ID
                     // e.g., "openrouter/microsoft/wizardlm-2-8x22b" -> ["openrouter", "microsoft", "wizardlm-2-8x22b"]
@@ -96,14 +102,16 @@ export const SceneBeat = (storyId: string | undefined, chapter_number: number) =
                         return acc;
                     }, '');
 
-                    // Format prompt using promptUtils
+                    // Format prompt using promptUtils with POV data
                     const messages = formatPromptMessages(
                         selectedPrompt.prompt_data,
                         {
                             lorebookItems,
                             summariesSoFar,
                             previousText,
-                            sceneBeat
+                            sceneBeat,
+                            povType,
+                            povCharacter
                         }
                     );
 

@@ -25,6 +25,11 @@ interface StorySettings {
     author: string;
 }
 
+interface POVSettings {
+    pov_type: string;
+    pov_character: string | null;
+}
+
 interface DBSchema {
     lorebookItems: {
         key: string;
@@ -45,6 +50,10 @@ interface DBSchema {
     storySettings: {
         key: string;
         value: StorySettings;
+    };
+    povSettings: {
+        key: string;
+        value: POVSettings;
     };
 }
 
@@ -80,6 +89,9 @@ export class IndexedDBStore {
                 }
                 if (!db.objectStoreNames.contains('storySettings')) {
                     db.createObjectStore('storySettings');
+                }
+                if (!db.objectStoreNames.contains('povSettings')) {
+                    db.createObjectStore('povSettings');
                 }
             };
         });
@@ -266,6 +278,34 @@ export class IndexedDBStore {
             transaction.oncomplete = () => db.close();
         });
     }
+
+    async getPOVSettings(chapterId: string): Promise<POVSettings | null> {
+        const db = await this.openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction('povSettings', 'readonly');
+            const store = transaction.objectStore('povSettings');
+            const request = store.get(chapterId);
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result || null);
+
+            transaction.oncomplete = () => db.close();
+        });
+    }
+
+    async setPOVSettings(chapterId: string, settings: POVSettings): Promise<void> {
+        const db = await this.openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction('povSettings', 'readwrite');
+            const store = transaction.objectStore('povSettings');
+            const request = store.put(settings, chapterId);
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+
+            transaction.oncomplete = () => db.close();
+        });
+    }
 }
 
 export const lorebookDB = new IndexedDBStore('lorebook-store');
@@ -273,3 +313,4 @@ export const summariesDB = new IndexedDBStore('summaries-store');
 export const aiSettingsDB = new IndexedDBStore('ai-settings-store');
 export const vendorModelsDB = new IndexedDBStore('vendor-models-store');
 export const storySettingsDB = new IndexedDBStore('story-settings-store');
+export const povSettingsDB = new IndexedDBStore('pov-settings-store');
