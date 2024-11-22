@@ -1,5 +1,4 @@
 -- Users table (auth.users is managed by Supabase Auth)
-
 create table stories (
     id uuid not null default gen_random_uuid (),
     title text not null,
@@ -21,10 +20,12 @@ create table chapters (
     story_id uuid null,
     chapter_data jsonb null,
     created_at timestamp with time zone null default now(),
+    pov_character text null,
+    pov_type text null default 'Third Person Omniscient'::text,
     constraint chapters_pkey primary key (id),
     constraint chapters_story_id_chapter_number_key unique (story_id, chapter_number),
     constraint chapters_story_id_fkey foreign key (story_id) references stories (id) on delete cascade
-  )
+  );
 
 create index if not exists idx_chapters_story_id on public.chapters using btree (story_id) tablespace pg_default;
 
@@ -37,7 +38,7 @@ create table lorebooks (
     constraint lorebooks_pkey primary key (id),
     constraint lorebooks_story_id_key unique (story_id),
     constraint lorebooks_story_id_fkey foreign key (story_id) references stories (id) on delete cascade
-  )
+  );
 
 -- Lorebook Items table
 create table lorebook_items (
@@ -58,7 +59,7 @@ create table lorebook_items (
         )
       )
     )
-  )
+  );
 
 create index if not exists idx_lorebook_items_lorebook_id on public.lorebook_items using btree (lorebook_id) tablespace pg_default;
 
@@ -73,4 +74,4 @@ create table prompts (
     prompt_type text null default 'scene_beat'::text,
     constraint prompts_pkey primary key (id),
     constraint prompts_user_id_fkey foreign key (user_id) references auth.users (id) on delete cascade
-  )
+  );    

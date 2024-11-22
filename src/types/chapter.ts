@@ -11,4 +11,6 @@ export interface Chapter {
     }
     created_at: string
     updated_at: string
+    pov_character: string
+    pov_type: string
 }
