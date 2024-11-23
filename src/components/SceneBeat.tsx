@@ -9,6 +9,25 @@ import { Prompt } from '@/types/prompt';
 import { useChapterStore } from '@/store/useChapterStore';
 import { handleAIStream } from '../lib/ai/streamUtils';
 import { povSettingsDB } from '@/lib/indexedDB';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
+    DropdownMenuPortal,
+} from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { ChevronRight } from 'lucide-react'
+
+// Add this helper function at the top of your component
+const getDisplayModelName = (fullPath: string) => {
+    const parts = fullPath.trim().split('/');
+    return parts[parts.length - 1]; // Get the last part of the path
+};
 
 // The Scene Beat block.
 export const SceneBeat = (storyId: string | undefined, chapter_number: number, chapterId: string) =>
@@ -161,56 +180,93 @@ export const SceneBeat = (storyId: string | undefined, chapter_number: number, c
                             ref={props.contentRef}
                             contentEditable
                         />
-                        <div className="flex items-center gap-2">
-                            <select
-                                className="px-2 py-1 text-[13px] border rounded"
-                                value={selectedPrompt?.id || ''}
-                                onChange={(e) => {
-                                    const prompt = [...prompts, ...systemPrompts].find(p => p.id === e.target.value)
-                                    setSelectedPrompt(prompt || null)
-                                    setSelectedModel('')
-                                }}
-                            >
-                                <option value="">Select Prompt</option>
-                                <optgroup label="System Prompts">
-                                    {systemPrompts.map(prompt => (
-                                        <option key={prompt.id} value={prompt.id}>{prompt.name}</option>
-                                    ))}
-                                </optgroup>
-                                <optgroup label="User Prompts">
-                                    {prompts.map(prompt => (
-                                        <option key={prompt.id} value={prompt.id}>{prompt.name}</option>
-                                    ))}
-                                </optgroup>
-                            </select>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <div className="flex flex-row gap-2 sm:gap-3">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" className="w-[200px] truncate">
+                                            <span className="truncate">
+                                                {selectedPrompt?.name || "Select Prompt"}
+                                            </span>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-56">
+                                        {systemPrompts.length > 0 && (
+                                            <>
+                                                <DropdownMenuItem disabled className="font-semibold">
+                                                    System Prompts
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                {systemPrompts.map((prompt) => (
+                                                    <DropdownMenuItem
+                                                        key={prompt.id}
+                                                        onClick={() => {
+                                                            setSelectedPrompt(prompt)
+                                                            setSelectedModel('')
+                                                        }}
+                                                    >
+                                                        {prompt.name}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </>
+                                        )}
 
-                            {selectedPrompt && (
-                                <select
-                                    className="px-2 py-1 text-[13px] border rounded"
-                                    value={selectedModel}
-                                    onChange={(e) => setSelectedModel(e.target.value)}
+                                        {prompts.length > 0 && (
+                                            <>
+                                                <DropdownMenuItem disabled className="font-semibold">
+                                                    User Prompts
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                {prompts.map((prompt) => (
+                                                    <DropdownMenuItem
+                                                        key={prompt.id}
+                                                        onClick={() => {
+                                                            setSelectedPrompt(prompt)
+                                                            setSelectedModel('')
+                                                        }}
+                                                    >
+                                                        {prompt.name}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
+                                {selectedPrompt && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" className="w-[200px] truncate">
+                                                <span className="truncate">
+                                                    {selectedModel ? getDisplayModelName(selectedModel) : "Select Model"}
+                                                </span>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent className="w-56">
+                                            {selectedPrompt.allowed_models.split(',').map((model) => (
+                                                <DropdownMenuItem
+                                                    key={model}
+                                                    onClick={() => setSelectedModel(model)}
+                                                >
+                                                    {getDisplayModelName(model)}
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
+
+                                <Button
+                                    onClick={handleGenerateClick}
+                                    disabled={!selectedPrompt || !selectedModel}
+                                    variant="outline"
+                                    className="w-full sm:w-[200px] flex items-center justify-center gap-1.5"
                                 >
-                                    <option value="">Select Model</option>
-                                    {selectedPrompt.allowed_models.split(',').map(model => (
-                                        <option key={model} value={model}>{model}</option>
-                                    ))}
-                                </select>
-                            )}
-
-                            <button
-                                onClick={handleGenerateClick}
-                                disabled={!selectedPrompt || !selectedModel}
-                                className="flex items-center gap-1.5 px-2.5 py-1 text-[13px] font-medium text-gray-600 
-                                         bg-white border border-gray-200 rounded-md 
-                                         hover:bg-gray-50 hover:border-gray-300 
-                                         disabled:opacity-50 disabled:cursor-not-allowed
-                                         transition-all duration-200"
-                            >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 4V20M20 12L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                </svg>
-                                Generate Prose
-                            </button>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 4V20M20 12L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                    </svg>
+                                    <span className="truncate">Generate Prose</span>
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 );
